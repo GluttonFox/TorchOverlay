@@ -20,6 +20,7 @@ class BaiduOcrConfig:
     timeout_sec: float = 15.0
     max_retries: int = 2
     backoff_sec: float = 0.6
+    debug_mode: bool = False  # 调试模式
 
 
 class BaiduOcrEngine(IOcrEngine):
@@ -96,6 +97,11 @@ class BaiduOcrEngine(IOcrEngine):
         if self._token and now < self._token_expire_at:
             return self._token
 
+        if self._cfg.debug_mode:
+            print(f"[BaiduOcr] 获取 Access Token:")
+            print(f"  API Key: {self._cfg.api_key[:10]}... (长度: {len(self._cfg.api_key)})")
+            print(f"  Secret Key: {self._cfg.secret_key[:10]}... (长度: {len(self._cfg.secret_key)})")
+
         url = "https://aip.baidubce.com/oauth/2.0/token"
         params = {
             "grant_type": "client_credentials",
@@ -103,6 +109,10 @@ class BaiduOcrEngine(IOcrEngine):
             "client_secret": self._cfg.secret_key,
         }
         resp = requests.get(url, params=params, timeout=self._cfg.timeout_sec)
+
+        if self._cfg.debug_mode:
+            print(f"  响应状态码: {resp.status_code}")
+
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
 
@@ -115,6 +125,10 @@ class BaiduOcrEngine(IOcrEngine):
         # 提前 60 秒过期，避免边界问题
         self._token = token
         self._token_expire_at = time.time() + int(expires_in) - 60
+
+        if self._cfg.debug_mode:
+            print(f"  Token 获取成功: {token[:20]}...{token[-20:]}")
+
         return token
 
     # ---------------- helpers ----------------

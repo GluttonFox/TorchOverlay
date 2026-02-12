@@ -57,6 +57,10 @@ class SettingsWindow:
         self.retries_var = tk.IntVar()
         ttk.Spinbox(ocr_frame, from_=0, to=5, textvariable=self.retries_var, width=10).place(x=80, y=130)
 
+        # 调试模式
+        self.debug_var = tk.BooleanVar()
+        ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).place(x=10, y=160)
+
         # 说明
         info_label = ttk.Label(
             ocr_frame,
@@ -89,6 +93,7 @@ class SettingsWindow:
         self.api_name_var.set(self._cfg.ocr.api_name)
         self.timeout_var.set(self._cfg.ocr.timeout_sec)
         self.retries_var.set(self._cfg.ocr.max_retries)
+        self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
 
     def _save_settings(self):
@@ -107,6 +112,7 @@ class SettingsWindow:
             api_name=self.api_name_var.get(),
             timeout_sec=self.timeout_var.get(),
             max_retries=self.retries_var.get(),
+            debug_mode=self.debug_var.get(),
         )
 
         # 保存配置

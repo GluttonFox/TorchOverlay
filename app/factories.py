@@ -14,6 +14,16 @@ class AppFactory:
 
     def __init__(self):
         self._cfg = AppConfig.load()
+        self._debug_print("[AppFactory] 配置已加载:")
+        self._debug_print(f"  API Key: {self._cfg.ocr.api_key[:10] if self._cfg.ocr.api_key else '空'}...")
+        self._debug_print(f"  Secret Key: {self._cfg.ocr.secret_key[:10] if self._cfg.ocr.secret_key else '空'}...")
+        self._debug_print(f"  API Name: {self._cfg.ocr.api_name}")
+        self._debug_print(f"  Debug Mode: {self._cfg.ocr.debug_mode}")
+
+    def _debug_print(self, *args, **kwargs):
+        """调试输出，仅在调试模式下打印"""
+        if self._cfg.ocr.debug_mode:
+            print(*args, **kwargs)
 
     def create_config(self) -> AppConfig:
         return self._cfg
@@ -56,7 +66,12 @@ class AppFactory:
             api_name=self._cfg.ocr.api_name,
             timeout_sec=self._cfg.ocr.timeout_sec,
             max_retries=self._cfg.ocr.max_retries,
+            debug_mode=self._cfg.ocr.debug_mode,
         )
+        self._debug_print("[AppFactory] 创建 OCR 引擎:")
+        self._debug_print(f"  API Key 长度: {len(cfg.api_key)}")
+        self._debug_print(f"  Secret Key 长度: {len(cfg.secret_key)}")
+        self._debug_print(f"  Debug Mode: {cfg.debug_mode}")
         return BaiduOcrEngine(cfg)
 
 

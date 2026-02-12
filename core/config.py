@@ -10,6 +10,7 @@ class OcrConfig:
     api_name: str = "accurate"
     timeout_sec: float = 15.0
     max_retries: int = 2
+    debug_mode: bool = False  # 调试模式开关
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'OcrConfig':
