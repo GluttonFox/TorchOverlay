@@ -1,5 +1,6 @@
 from core.config import AppConfig
 from services.game_binder import GameBinder
+from services.ocr.base_ocr import IOcrEngine
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
 import time
@@ -8,11 +9,12 @@ import os
 class AppController:
     """控制器：业务流程与 UI 交互的中枢。"""
 
-    def __init__(self, cfg: AppConfig, binder: GameBinder, watcher: ProcessWatcher, capture: CaptureService):
+    def __init__(self, cfg: AppConfig, binder: GameBinder, watcher: ProcessWatcher, capture: CaptureService, ocr: IOcrEngine):
         self._cfg = cfg
         self._binder = binder
         self._watcher = watcher
         self._capture = capture
+        self._ocr = ocr
         self._ui = None
 
     def attach_ui(self, ui):
@@ -52,14 +54,18 @@ class AppController:
     def on_detect_click(self):
         bound = self._binder.bound
         if not bound:
-            self._ui.show_info("未绑定游戏窗口，无法截图。")
+            self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        out_path = os.path.join(os.getcwd(), "captures", f"last_capture_{int(time.time())}.png")
-        r = self._capture.capture_window_once(bound.title, out_path, timeout_sec=2.5)
+        out_path = os.path.join(os.getcwd(), "captures", "last_capture.png")
+        cap = self._capture.capture_window_once(bound.title, out_path, timeout_sec=2.5)
+        if not cap.ok:
+            self._ui.show_info(f"截图失败：{cap.error}")
+            return
 
+        r = self._ocr.recognize(cap.path)
         if not r.ok:
-            self._ui.show_info(f"截图失败：{r.error}")
+            self._ui.show_info(f"OCR失败：{r.error}")
             return
 
-        self._ui.show_info(f"截图成功：{r.path}")
+        self._ui.show_info(r.text if r.text else "未识别到文字")

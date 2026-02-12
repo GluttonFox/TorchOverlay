@@ -6,6 +6,8 @@ from services.game_binder import GameBinder
 from services.process_watcher import ProcessWatcher
 from ui.main_window import MainWindow
 from services.capture_service import CaptureService
+from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
+
 
 class AppFactory:
     """集中装配依赖：后续加截图/云OCR只需在这里注入。"""
@@ -44,6 +46,17 @@ class AppFactory:
         binder = self.create_game_binder()
         watcher = self.create_process_watcher()
         capture = self.create_capture_service()
-        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture)
+        ocr = self.create_ocr_engine()
+        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr)
+
+    def create_ocr_engine(self):
+        cfg = BaiduOcrConfig(
+            api_key="ZWkIofSWD0NLUaVOv9haUv6v",
+            secret_key="0QXmsJTj5egvRPnIn78DKPh0JehRiN2B",
+            api_name="accurate",  # 先用标准版；需要更强再换 accurate_basic
+        )
+        return BaiduOcrEngine(cfg)
+
+
 
 
