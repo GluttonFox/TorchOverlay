@@ -27,6 +27,7 @@ class OverlayService:
         self._target_hwnd: int | None = None
         self._text_items: list[Any] = []
         self._visible = False
+        self._overlay_hwnd: int | None = None  # overlay窗口的句柄
 
     def create_overlay(self, target_hwnd: int):
         """创建覆盖层窗口"""
@@ -43,8 +44,18 @@ class OverlayService:
         self._window.title("OCR Overlay")
         self._window.geometry(f"{width}x{height}+{x}+{y}")
         self._window.overrideredirect(True)  # 无边框窗口
-        self._window.attributes("-topmost", True)  # 置顶
         self._window.attributes("-alpha", 0.9)  # 设置窗口透明度（0.9 = 90%不透明）
+        # 不使用 -topmost，而是设置为游戏窗口的子窗口
+
+        # 获取overlay窗口的句柄
+        import win32gui
+        self._overlay_hwnd = int(self._window.winfo_id())
+
+        # 设置overlay窗口为游戏窗口的子窗口
+        try:
+            win32gui.SetParent(self._overlay_hwnd, target_hwnd)
+        except Exception:
+            pass  # 如果设置失败，继续执行
 
         # 创建画布（使用透明效果）
         try:
@@ -68,13 +79,13 @@ class OverlayService:
             )
         self._canvas.pack(fill=tk.BOTH, expand=True)
 
-        # 绑定窗口位置同步（当目标窗口移动时，覆盖层也跟着移动）
+        # 绑定窗口位置同步和可见性检查
         self._window.after(100, self._sync_window_position)
 
         return True
 
     def _sync_window_position(self):
-        """同步覆盖层窗口与目标窗口的位置"""
+        """同步覆盖层窗口与目标窗口的位置和可见性"""
         if self._window is None or self._target_hwnd is None:
             return
 
@@ -83,6 +94,17 @@ class OverlayService:
             if not win32gui.IsWindow(self._target_hwnd):
                 self.close()
                 return
+
+            # 检查目标窗口是否在前台
+            foreground_hwnd = win32gui.GetForegroundWindow()
+            target_is_foreground = (foreground_hwnd == self._target_hwnd)
+
+            # 如果目标窗口不在前台，隐藏overlay
+            if not target_is_foreground and self._visible:
+                self._window.withdraw()
+            # 如果目标窗口在前台，显示overlay
+            elif target_is_foreground and self._visible:
+                self._window.deiconify()
 
             # 获取新的client区域位置
             x, y, width, height = get_client_rect_in_screen(self._target_hwnd)
