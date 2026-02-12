@@ -16,6 +16,10 @@ class SettingsWindow:
         self.window.resizable(False, False)
         self.window.grab_set()  # 模态窗口
 
+        # 保存原始的完整key
+        self._original_api_key = cfg.ocr.api_key
+        self._original_secret_key = cfg.ocr.secret_key
+
         self._setup_ui()
         self._load_config()
 
@@ -101,8 +105,9 @@ class SettingsWindow:
 
     def _load_config(self):
         """加载当前配置到界面"""
-        self.api_key_var.set(self._cfg.ocr.api_key)
-        self.secret_key_var.set(self._cfg.ocr.secret_key)
+        # 显示脱敏后的key
+        self.api_key_var.set(self._mask_sensitive(self._cfg.ocr.api_key))
+        self.secret_key_var.set(self._mask_sensitive(self._cfg.ocr.secret_key))
 
         # 将API名称转换为中文显示
         api_name = self._cfg.ocr.api_name
@@ -113,6 +118,20 @@ class SettingsWindow:
         self.retries_var.set(self._cfg.ocr.max_retries)
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
+
+    def _mask_sensitive(self, value: str) -> str:
+        """脱敏敏感信息，只显示前4位和最后4位"""
+        if not value or len(value) <= 8:
+            return value
+        return f"{value[:4]}{'*' * (len(value) - 8)}{value[-4:]}"
+
+    def _get_actual_key(self, displayed_key: str, original_key: str) -> str:
+        """获取实际的key值（如果用户没有修改，使用原始值）"""
+        displayed = displayed_key.strip()
+        # 如果显示值包含*，说明是脱敏显示，返回原始值
+        if '*' in displayed:
+            return original_key
+        return displayed
 
     def _get_chinese_name_for_api(self, api_name: str) -> str:
         """根据API名称获取中文显示值"""
@@ -128,8 +147,12 @@ class SettingsWindow:
 
     def _save_settings(self):
         """保存设置"""
-        api_key = self.api_key_var.get().strip()
-        secret_key = self.secret_key_var.get().strip()
+        displayed_api_key = self.api_key_var.get().strip()
+        displayed_secret_key = self.secret_key_var.get().strip()
+
+        # 获取实际的key值（如果显示的是脱敏值，使用原始值）
+        api_key = self._get_actual_key(displayed_api_key, self._original_api_key)
+        secret_key = self._get_actual_key(displayed_secret_key, self._original_secret_key)
 
         if not api_key or not secret_key:
             messagebox.showwarning("警告", "API Key 和 Secret Key 不能为空！")
@@ -151,5 +174,4 @@ class SettingsWindow:
 
         # 保存配置
         if self._save_callback(ocr_config, self.interval_var.get()):
-            messagebox.showinfo("成功", "设置已保存！")
             self.window.destroy()
