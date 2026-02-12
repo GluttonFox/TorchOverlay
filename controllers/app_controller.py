@@ -72,10 +72,10 @@ class AppController:
 
         # 余额识别区域配置
         balance_region = {
-            'x': self._cfg.balance_region.x,
-            'y': self._cfg.balance_region.y,
-            'width': self._cfg.balance_region.width,
-            'height': self._cfg.balance_region.height,
+            'x': self._cfg.regions.balance.x,
+            'y': self._cfg.regions.balance.y,
+            'width': self._cfg.regions.balance.width,
+            'height': self._cfg.regions.balance.height,
             'name': '余额区域'
         }
 

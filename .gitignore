@@ -49,4 +49,3 @@ captures/*.bmp
 # Config files (contains sensitive API keys and regions)
 config.json
 range.json
-items.json

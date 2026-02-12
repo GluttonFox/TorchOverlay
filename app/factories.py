@@ -16,14 +16,13 @@ class AppFactory:
     def __init__(self):
         self._cfg = AppConfig.load()
         # 确保配置文件存在（如果不存在则创建）
-        self._cfg.balance_region.save()
-        self._cfg.item_regions.save()
+        self._cfg.regions.save()
         self._debug_print("[AppFactory] 配置已加载:")
         self._debug_print(f"  API Key: {self._cfg.ocr.api_key[:10] if self._cfg.ocr.api_key else '空'}...")
         self._debug_print(f"  Secret Key: {self._cfg.ocr.secret_key[:10] if self._cfg.ocr.secret_key else '空'}...")
         self._debug_print(f"  API Name: {self._cfg.ocr.api_name}")
         self._debug_print(f"  Debug Mode: {self._cfg.ocr.debug_mode}")
-        self._debug_print(f"  物品区域数量: {len(self._cfg.item_regions.regions)}")
+        self._debug_print(f"  物品区域数量: {len(self._cfg.regions.items.get_all_regions())}")
 
     def _debug_print(self, *args, **kwargs):
         """调试输出，仅在调试模式下打印"""

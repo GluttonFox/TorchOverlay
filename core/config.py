@@ -18,13 +18,94 @@ class BalanceRegionConfig:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+@dataclass
+class ItemGridConfig:
+    """物品识别区域网格配置"""
+    # 起始位置
+    start_x: int = 480
+    start_y: int = 240
+
+    # 单个物品槽大小
+    width: int = 220
+    height: int = 280
+
+    # 间距
+    horizontal_spacing: int = 40  # 列间距
+    vertical_spacing: int = 40    # 行间距
+
+    # 网格大小
+    rows: int = 2  # 行数
+    cols: int = 6  # 列数（第1行6列，第2行2列）
+
+    def get_region(self, row: int, col: int) -> dict[str, int] | None:
+        """获取指定行列的物品区域配置"""
+        # 检查行列是否有效
+        if row >= self.rows:
+            return None
+
+        # 第1行有6列，第2行只有2列
+        if row == 1 and col >= 2:
+            return None
+
+        x = self.start_x + col * (self.width + self.horizontal_spacing)
+        y = self.start_y + row * (self.height + self.vertical_spacing)
+
+        return {
+            "x": x,
+            "y": y,
+            "width": self.width,
+            "height": self.height,
+            "name": f"item_r{row}_c{col}"
+        }
+
+    def get_all_regions(self) -> list[dict[str, Any]]:
+        """获取所有物品区域"""
+        regions = []
+        for row in range(self.rows):
+            # 第1行有6列，第2行只有2列
+            cols_in_row = 2 if row == 1 else 6
+            for col in range(cols_in_row):
+                region = self.get_region(row, col)
+                if region:
+                    regions.append(region)
+        return regions
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> 'ItemGridConfig':
+        return cls(**data)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class RegionsConfig:
+    """区域配置集合（包含余额和物品区域）"""
+    balance: BalanceRegionConfig = field(default_factory=BalanceRegionConfig)
+    items: ItemGridConfig = field(default_factory=ItemGridConfig)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> 'RegionsConfig':
+        balance_data = data.get('balance', {})
+        items_data = data.get('items', {})
+
+        return cls(
+            balance=BalanceRegionConfig(**balance_data),
+            items=ItemGridConfig(**items_data)
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            'balance': self.balance.to_dict(),
+            'items': self.items.to_dict()
+        }
+
     @staticmethod
     def get_config_path() -> str:
-        """获取余额区域配置文件路径"""
+        """获取区域配置文件路径"""
         return os.path.join(os.getcwd(), "range.json")
 
     @classmethod
-    def load(cls) -> 'BalanceRegionConfig':
+    def load(cls) -> 'RegionsConfig':
         """从 range.json 加载配置"""
         config_path = cls.get_config_path()
         if os.path.exists(config_path):
@@ -33,7 +114,7 @@ class BalanceRegionConfig:
                     data = json.load(f)
                 return cls.from_dict(data)
             except Exception as e:
-                print(f"加载余额区域配置文件失败: {e}")
+                print(f"加载区域配置文件失败: {e}")
         return cls()
 
     def save(self) -> bool:
@@ -44,84 +125,8 @@ class BalanceRegionConfig:
                 json.dump(self.to_dict(), f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存余额区域配置文件失败: {e}")
+            print(f"保存区域配置文件失败: {e}")
             return False
-
-@dataclass
-class ItemRegionConfig:
-    """单个物品识别区域配置"""
-    x: int
-    y: int
-    width: int
-    height: int
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ItemRegionConfig':
-        return cls(**data)
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-@dataclass
-class ItemRegionsConfig:
-    """物品识别区域配置集合"""
-    regions: dict[str, ItemRegionConfig] = field(default_factory=dict)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ItemRegionsConfig':
-        regions = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                regions[key] = ItemRegionConfig(**value)
-        return cls(regions=regions)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {key: value.to_dict() for key, value in self.regions.items()}
-
-    @staticmethod
-    def get_config_path() -> str:
-        """获取物品区域配置文件路径"""
-        return os.path.join(os.getcwd(), "items.json")
-
-    @classmethod
-    def load(cls) -> 'ItemRegionsConfig':
-        """从 items.json 加载配置"""
-        config_path = cls.get_config_path()
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                return cls.from_dict(data)
-            except Exception as e:
-                print(f"加载物品区域配置文件失败: {e}")
-        # 如果文件不存在，返回默认配置
-        return cls.get_default()
-
-    def save(self) -> bool:
-        """保存配置到 items.json"""
-        try:
-            config_path = self.get_config_path()
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(self.to_dict(), f, indent=4, ensure_ascii=False)
-            return True
-        except Exception as e:
-            print(f"保存物品区域配置文件失败: {e}")
-            return False
-
-    @classmethod
-    def get_default(cls) -> 'ItemRegionsConfig':
-        """获取默认物品区域配置"""
-        default_regions = {
-            "item_r0_c0": ItemRegionConfig(x=480, y=240, width=220, height=280),
-            "item_r0_c1": ItemRegionConfig(x=720, y=240, width=220, height=280),
-            "item_r0_c2": ItemRegionConfig(x=960, y=240, width=220, height=280),
-            "item_r0_c3": ItemRegionConfig(x=1200, y=240, width=220, height=280),
-            "item_r0_c4": ItemRegionConfig(x=1440, y=240, width=220, height=280),
-            "item_r0_c5": ItemRegionConfig(x=1680, y=240, width=220, height=280),
-            "item_r1_c0": ItemRegionConfig(x=480, y=560, width=220, height=280),
-            "item_r1_c1": ItemRegionConfig(x=720, y=560, width=220, height=280),
-        }
-        return cls(regions=default_regions)
 
 @dataclass
 class OcrConfig:
@@ -146,8 +151,7 @@ class AppConfig:
     watch_interval_ms: int = 500
     elevated_marker: str = "--elevated"
     ocr: OcrConfig = field(default_factory=OcrConfig)
-    balance_region: BalanceRegionConfig = field(default_factory=BalanceRegionConfig)
-    item_regions: ItemRegionsConfig = field(default_factory=ItemRegionsConfig)
+    regions: RegionsConfig = field(default_factory=RegionsConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':
