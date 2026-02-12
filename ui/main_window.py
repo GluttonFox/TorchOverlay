@@ -103,10 +103,10 @@ class MainWindow:
         latest_cfg = self._controller.get_config()
         SettingsWindow(self.root, latest_cfg, self._save_config_callback)
 
-    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int, balance_region=None) -> bool:
+    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int) -> bool:
         """保存配置回调"""
         try:
-            result = self._controller.update_config(ocr_config, watch_interval_ms, balance_region)
+            result = self._controller.update_config(ocr_config, watch_interval_ms)
             if result:
                 # 更新UI中保存的配置引用
                 self._cfg = self._controller.get_config()

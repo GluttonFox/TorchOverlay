@@ -42,7 +42,7 @@ class SettingsWindow:
 
         # OCR设置分组
         ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
-        ocr_frame.place(x=20, y=20, width=610, height=300)
+        ocr_frame.place(x=20, y=20, width=610, height=240)
 
         # API Key
         ttk.Label(ocr_frame, text="API Key:").place(x=10, y=10)
@@ -89,33 +89,16 @@ class SettingsWindow:
 
         # 应用设置分组
         app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=330, width=610, height=130)
+        app_frame.place(x=20, y=270, width=610, height=70)
 
         # 监控间隔
         ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
         self.interval_var = tk.IntVar()
         ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).place(x=120, y=10)
 
-        # 余额识别区域
-        ttk.Label(app_frame, text="余额区域(X):").place(x=10, y=40)
-        self.balance_x_var = tk.IntVar()
-        ttk.Spinbox(app_frame, from_=0, to=9999, textvariable=self.balance_x_var, width=8).place(x=120, y=40)
-
-        ttk.Label(app_frame, text="余额区域(Y):").place(x=10, y=70)
-        self.balance_y_var = tk.IntVar()
-        ttk.Spinbox(app_frame, from_=0, to=9999, textvariable=self.balance_y_var, width=8).place(x=120, y=70)
-
-        ttk.Label(app_frame, text="余额区域(宽):").place(x=220, y=40)
-        self.balance_width_var = tk.IntVar()
-        ttk.Spinbox(app_frame, from_=10, to=9999, textvariable=self.balance_width_var, width=8).place(x=320, y=40)
-
-        ttk.Label(app_frame, text="余额区域(高):").place(x=220, y=70)
-        self.balance_height_var = tk.IntVar()
-        ttk.Spinbox(app_frame, from_=10, to=9999, textvariable=self.balance_height_var, width=8).place(x=320, y=70)
-
         # 按钮
         button_frame = ttk.Frame(self.window)
-        button_frame.place(x=20, y=420, width=610, height=50)
+        button_frame.place(x=20, y=350, width=610, height=50)
 
         ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=320, y=10)
         ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=450, y=10)
@@ -136,11 +119,21 @@ class SettingsWindow:
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
 
-        # 余额识别区域
-        self.balance_x_var.set(self._cfg.balance_region.x)
-        self.balance_y_var.set(self._cfg.balance_region.y)
-        self.balance_width_var.set(self._cfg.balance_region.width)
-        self.balance_height_var.set(self._cfg.balance_region.height)
+    def _load_config(self):
+        """加载当前配置到界面"""
+        # 显示脱敏后的key
+        self.api_key_var.set(self._mask_sensitive(self._cfg.ocr.api_key))
+        self.secret_key_var.set(self._mask_sensitive(self._cfg.ocr.secret_key))
+
+        # 将API名称转换为中文显示
+        api_name = self._cfg.ocr.api_name
+        chinese_name = self._get_chinese_name_for_api(api_name)
+        self.api_name_var.set(chinese_name)
+
+        self.timeout_var.set(self._cfg.ocr.timeout_sec)
+        self.retries_var.set(self._cfg.ocr.max_retries)
+        self.debug_var.set(self._cfg.ocr.debug_mode)
+        self.interval_var.set(self._cfg.watch_interval_ms)
 
     def _mask_sensitive(self, value: str) -> str:
         """脱敏敏感信息，只显示前4位和最后4位"""
@@ -195,15 +188,6 @@ class SettingsWindow:
             debug_mode=self.debug_var.get(),
         )
 
-        # 创建余额区域配置
-        from core.config import BalanceRegionConfig
-        balance_region = BalanceRegionConfig(
-            x=self.balance_x_var.get(),
-            y=self.balance_y_var.get(),
-            width=self.balance_width_var.get(),
-            height=self.balance_height_var.get(),
-        )
-
         # 保存配置
-        if self._save_callback(ocr_config, self.interval_var.get(), balance_region):
+        if self._save_callback(ocr_config, self.interval_var.get()):
             self.window.destroy()

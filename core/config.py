@@ -5,11 +5,11 @@ from typing import Any
 
 @dataclass
 class BalanceRegionConfig:
-    """余额识别区域配置"""
-    x: int = 270
-    y: int = 10
-    width: int = 50
-    height: int = 50
+    """余额识别区域配置（内部配置，不在UI中展示）"""
+    x: int = 1735
+    y: int = 36
+    width: int = 100
+    height: int = 40
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'BalanceRegionConfig':
