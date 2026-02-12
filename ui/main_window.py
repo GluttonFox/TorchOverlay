@@ -21,14 +21,40 @@ class MainWindow:
         self.lbl_status = tk.Label(self.root, text="", font=("Segoe UI", 10), anchor="w", justify="left")
         self.lbl_status.place(x=16, y=52, width=588, height=60)
 
+        # 余额显示区域
+        tk.Label(self.root, text="当前余额：", font=("Segoe UI", 12, "bold")).place(x=16, y=125)
+        self.lbl_balance = tk.Label(self.root, text="--", font=("Segoe UI", 16, "bold"), fg="#2ECC71")
+        self.lbl_balance.place(x=120, y=120, width=250, height=35)
+
+        # 按钮区域
+        button_frame = tk.Frame(self.root)
+        button_frame.place(x=16, y=170, width=588, height=30)
+
         self.btn_detect = tk.Button(
-            self.root,
+            button_frame,
             text="识别物品",
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 9),
             state="disabled",
             command=self._controller.on_detect_click
         )
-        self.btn_detect.place(x=16, y=210, width=360, height=34)
+        self.btn_detect.place(x=0, y=0, width=175, height=30)
+
+        self.btn_balance = tk.Button(
+            button_frame,
+            text="识别余额",
+            font=("Segoe UI", 9),
+            state="disabled",
+            command=self._controller.on_balance_detect_click
+        )
+        self.btn_balance.place(x=185, y=0, width=175, height=30)
+
+        self.btn_settings = tk.Button(
+            self.root,
+            text="⚙ 设置",
+            font=("Segoe UI", 10),
+            command=self._open_settings
+        )
+        self.btn_settings.place(x=386, y=210, width=218, height=34)
 
         self.btn_settings = tk.Button(
             self.root,
@@ -50,12 +76,14 @@ class MainWindow:
             self.lbl_header.config(text=title)
             self.lbl_status.config(text=f"状态：已绑定\n窗口：{bound.title}\nPID：{bound.pid}")
             self.btn_detect.config(state="normal")
+            self.btn_balance.config(state="normal")
         else:
             title = f"{self._cfg.app_title_prefix}-未绑定"
             self.root.title(title)
             self.lbl_header.config(text=title)
             self.lbl_status.config(text="状态：未绑定")
             self.btn_detect.config(state="disabled")
+            self.btn_balance.config(state="disabled")
 
         self._check_ocr_config()
 
@@ -73,6 +101,10 @@ class MainWindow:
 
     def show_info(self, msg: str):
         messagebox.showinfo("提示", msg)
+
+    def update_balance(self, balance: str):
+        """更新余额显示"""
+        self.lbl_balance.config(text=balance)
 
     def schedule(self, delay_ms: int, fn):
         self.root.after(delay_ms, fn)

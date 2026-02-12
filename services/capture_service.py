@@ -78,6 +78,51 @@ class CaptureService:
 
         return result
 
+    def capture_region_once(
+        self,
+        target_hwnd: int,
+        out_path: str,
+        region: dict,
+        timeout_sec: float = 2.5,
+    ) -> CaptureResult:
+        """
+        截取client区域中的指定区域
+        region格式: {'x': int, 'y': int, 'width': int, 'height': int}
+        """
+        if not target_hwnd or not win32gui.IsWindow(target_hwnd):
+            return CaptureResult(ok=False, error="无效的目标窗口句柄(hwnd)")
+
+        out_path = os.path.abspath(out_path)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        # 先截取整个client区域
+        tmp_full = out_path + ".tmp_full.png"
+        full_cap = self.capture_client_once(target_hwnd, tmp_full, timeout_sec=timeout_sec)
+        if not full_cap.ok or not full_cap.path:
+            return full_cap
+
+        try:
+            # 裁剪出指定区域
+            im = Image.open(tmp_full).convert("RGBA")
+            cropped = im.crop((
+                region['x'],
+                region['y'],
+                region['x'] + region['width'],
+                region['y'] + region['height']
+            ))
+            cropped.save(out_path)
+
+            # 清理临时文件
+            try:
+                os.remove(tmp_full)
+            except Exception:
+                pass
+
+            return CaptureResult(ok=True, path=out_path)
+
+        except Exception as e:
+            return CaptureResult(ok=False, error=f"裁剪区域失败：{e}")
+
     def capture_client_once(
         self,
         target_hwnd: int,

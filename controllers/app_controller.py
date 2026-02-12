@@ -70,6 +70,38 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
+        # 余额识别区域配置（可以扩展为配置项）
+        # 根据用户提供的位置: x=279, y=21, width=18, height=23
+        # 扩大区域以提高准确性
+        balance_region = {
+            'x': 250,  # 左边扩展29像素
+            'y': 10,   # 上边扩展11像素
+            'width': 100,  # 宽度扩展到100像素
+            'height': 50    # 高度扩展到50像素
+        }
+
+        # 截取余额区域
+        balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
+        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5)
+
+        if not cap.ok or not cap.path:
+            self._ui.show_info(f"截图失败：{cap.error}")
+            return
+
+        # 识别余额
+        r = self._ocr.recognize(cap.path)
+        if r.ok and r.text:
+            # 提取数字作为余额
+            balance_value = self._extract_balance(r.text)
+            self._ui.update_balance(balance_value)
+
+            if self._cfg.ocr.debug_mode:
+                print(f"\n[余额识别] 原始识别: {r.text}")
+                print(f"[余额识别] 提取余额: {balance_value}")
+        else:
+            if self._cfg.ocr.debug_mode:
+                print(f"[余额识别] 识别失败: {r.error if r.error else '未识别到文字'}")
+
         # A：截 client 区域（用于OCR/Overlay对齐）
         out_path = os.path.join(os.getcwd(), "captures", "last_client.png")
         cap = self._capture.capture_client_once(bound.hwnd, out_path, timeout_sec=2.5)
@@ -121,6 +153,55 @@ class AppController:
         else:
             self._overlay.close()
             self._ui.show_info("未识别到文字")
+
+    def _extract_balance(self, text: str) -> str:
+        """从识别的文本中提取余额数字"""
+        import re
+        # 匹配连续的数字
+        numbers = re.findall(r'\d+', text)
+        if numbers:
+            # 取最长的数字串（最可能是余额）
+            balance = max(numbers, key=len)
+            # 格式化余额（添加千分位分隔符）
+            try:
+                num = int(balance)
+                return f"{num:,}"
+            except ValueError:
+                return balance
+        return "--"
+
+    def on_balance_detect_click(self):
+        """单独的余额识别按钮（可选）"""
+        bound = self._binder.bound
+        if not bound:
+            self._ui.show_info("未绑定游戏窗口，无法识别。")
+            return
+
+        # 余额识别区域
+        balance_region = {
+            'x': 250,
+            'y': 10,
+            'width': 100,
+            'height': 50
+        }
+
+        balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
+        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5)
+
+        if not cap.ok or not cap.path:
+            self._ui.show_info(f"截图失败：{cap.error}")
+            return
+
+        r = self._ocr.recognize(cap.path)
+        if r.ok and r.text:
+            balance_value = self._extract_balance(r.text)
+            self._ui.update_balance(balance_value)
+
+            if self._cfg.ocr.debug_mode:
+                print(f"\n[余额识别] 原始识别: {r.text}")
+                print(f"[余额识别] 提取余额: {balance_value}")
+        else:
+            self._ui.show_info(f"余额识别失败: {r.error if r.error else '未识别到文字'}")
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
         """更新配置"""
