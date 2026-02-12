@@ -42,3 +42,6 @@ captures/*.png
 captures/*.jpg
 captures/*.bmp
 !captures/.gitkeep
+
+# Environment variables
+.env

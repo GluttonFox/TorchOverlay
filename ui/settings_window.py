@@ -1,0 +1,115 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+from core.config import AppConfig, OcrConfig
+
+class SettingsWindow:
+    """设置窗口：用于配置OCR和应用程序参数。"""
+
+    def __init__(self, parent: tk.Tk, cfg: AppConfig, save_callback):
+        self._parent = parent
+        self._cfg = cfg
+        self._save_callback = save_callback
+
+        self.window = tk.Toplevel(parent)
+        self.window.title("设置")
+        self.window.geometry("600x450")
+        self.window.resizable(False, False)
+        self.window.grab_set()  # 模态窗口
+
+        self._setup_ui()
+        self._load_config()
+
+        # 窗口居中
+        self.window.update_idletasks()
+        x = (self.window.winfo_screenwidth() // 2) - (self.window.winfo_width() // 2)
+        y = (self.window.winfo_screenheight() // 2) - (self.window.winfo_height() // 2)
+        self.window.geometry(f"+{x}+{y}")
+
+    def _setup_ui(self):
+        # OCR设置分组
+        ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
+        ocr_frame.place(x=20, y=20, width=560, height=250)
+
+        # API Key
+        ttk.Label(ocr_frame, text="API Key:").place(x=10, y=10)
+        self.api_key_var = tk.StringVar()
+        ttk.Entry(ocr_frame, textvariable=self.api_key_var, width=50).place(x=80, y=10)
+
+        # Secret Key
+        ttk.Label(ocr_frame, text="Secret Key:").place(x=10, y=40)
+        self.secret_key_var = tk.StringVar()
+        ttk.Entry(ocr_frame, textvariable=self.secret_key_var, width=50).place(x=80, y=40)
+
+        # API Name
+        ttk.Label(ocr_frame, text="API 类型:").place(x=10, y=70)
+        self.api_name_var = tk.StringVar()
+        api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=20, state="readonly")
+        api_name_combo['values'] = ('general_basic', 'accurate')
+        api_name_combo.place(x=80, y=70)
+
+        # 超时时间
+        ttk.Label(ocr_frame, text="超时时间(秒):").place(x=10, y=100)
+        self.timeout_var = tk.DoubleVar()
+        ttk.Spinbox(ocr_frame, from_=5, to=60, textvariable=self.timeout_var, width=10).place(x=80, y=100)
+
+        # 重试次数
+        ttk.Label(ocr_frame, text="重试次数:").place(x=10, y=130)
+        self.retries_var = tk.IntVar()
+        ttk.Spinbox(ocr_frame, from_=0, to=5, textvariable=self.retries_var, width=10).place(x=80, y=130)
+
+        # 说明
+        info_label = ttk.Label(
+            ocr_frame,
+            text="说明:\n• general_basic: 标准版（快速、经济）\n• accurate: 高精度版（带坐标，稍慢）",
+            foreground="gray",
+            wraplength=540
+        )
+        info_label.place(x=10, y=170)
+
+        # 应用设置分组
+        app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
+        app_frame.place(x=20, y=280, width=560, height=100)
+
+        # 监控间隔
+        ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
+        self.interval_var = tk.IntVar()
+        ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).place(x=120, y=10)
+
+        # 按钮
+        button_frame = ttk.Frame(self.window)
+        button_frame.place(x=20, y=390, width=560, height=50)
+
+        ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=300, y=10)
+        ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=430, y=10)
+
+    def _load_config(self):
+        """加载当前配置到界面"""
+        self.api_key_var.set(self._cfg.ocr.api_key)
+        self.secret_key_var.set(self._cfg.ocr.secret_key)
+        self.api_name_var.set(self._cfg.ocr.api_name)
+        self.timeout_var.set(self._cfg.ocr.timeout_sec)
+        self.retries_var.set(self._cfg.ocr.max_retries)
+        self.interval_var.set(self._cfg.watch_interval_ms)
+
+    def _save_settings(self):
+        """保存设置"""
+        api_key = self.api_key_var.get().strip()
+        secret_key = self.secret_key_var.get().strip()
+
+        if not api_key or not secret_key:
+            messagebox.showwarning("警告", "API Key 和 Secret Key 不能为空！")
+            return
+
+        # 创建新的配置对象
+        ocr_config = OcrConfig(
+            api_key=api_key,
+            secret_key=secret_key,
+            api_name=self.api_name_var.get(),
+            timeout_sec=self.timeout_var.get(),
+            max_retries=self.retries_var.get(),
+        )
+
+        # 保存配置
+        if self._save_callback(ocr_config, self.interval_var.get()):
+            messagebox.showinfo("成功", "设置已保存！")
+            self.window.destroy()

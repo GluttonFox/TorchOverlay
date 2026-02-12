@@ -51,9 +51,11 @@ class AppFactory:
 
     def create_ocr_engine(self):
         cfg = BaiduOcrConfig(
-            api_key="ZWkIofSWD0NLUaVOv9haUv6v",
-            secret_key="0QXmsJTj5egvRPnIn78DKPh0JehRiN2B",
-            api_name="accurate",  # 先用标准版；需要更强再换 accurate_basic
+            api_key=self._cfg.ocr.api_key,
+            secret_key=self._cfg.ocr.secret_key,
+            api_name=self._cfg.ocr.api_name,
+            timeout_sec=self._cfg.ocr.timeout_sec,
+            max_retries=self._cfg.ocr.max_retries,
         )
         return BaiduOcrEngine(cfg)
 

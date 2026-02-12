@@ -79,3 +79,20 @@ class AppController:
             return
 
         self._ui.show_info(r.text if r.text else "未识别到文字")
+
+    def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
+        """更新配置"""
+        try:
+            from core.config import AppConfig, OcrConfig
+            self._cfg = AppConfig(
+                app_title_prefix=self._cfg.app_title_prefix,
+                keywords=self._cfg.keywords,
+                watch_interval_ms=watch_interval_ms,
+                elevated_marker=self._cfg.elevated_marker,
+                ocr=ocr_config,
+            )
+            self._watcher.interval_ms = watch_interval_ms
+            return True
+        except Exception as e:
+            print(f"更新配置失败: {e}")
+            return False
