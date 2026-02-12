@@ -12,7 +12,7 @@ class SettingsWindow:
 
         self.window = tk.Toplevel(parent)
         self.window.title("设置")
-        self.window.geometry("600x450")
+        self.window.geometry("650x550")
         self.window.resizable(False, False)
         self.window.grab_set()  # 模态窗口
 
@@ -28,23 +28,30 @@ class SettingsWindow:
     def _setup_ui(self):
         # OCR设置分组
         ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
-        ocr_frame.place(x=20, y=20, width=560, height=250)
+        ocr_frame.place(x=20, y=20, width=610, height=300)
 
         # API Key
         ttk.Label(ocr_frame, text="API Key:").place(x=10, y=10)
         self.api_key_var = tk.StringVar()
-        ttk.Entry(ocr_frame, textvariable=self.api_key_var, width=50).place(x=80, y=10)
+        ttk.Entry(ocr_frame, textvariable=self.api_key_var, width=60).place(x=80, y=10)
 
         # Secret Key
         ttk.Label(ocr_frame, text="Secret Key:").place(x=10, y=40)
         self.secret_key_var = tk.StringVar()
-        ttk.Entry(ocr_frame, textvariable=self.secret_key_var, width=50).place(x=80, y=40)
+        ttk.Entry(ocr_frame, textvariable=self.secret_key_var, width=60).place(x=80, y=40)
 
         # API Name
         ttk.Label(ocr_frame, text="API 类型:").place(x=10, y=70)
         self.api_name_var = tk.StringVar()
-        api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=20, state="readonly")
-        api_name_combo['values'] = ('general_basic', 'accurate')
+        api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=40, state="readonly")
+        api_name_combo['values'] = (
+            'general_basic',        # 通用标准识别
+            'accurate',             # 高精度带坐标
+            'accurate_basic',       # 高精度基础
+            'general',              # 通用版
+            'general_enhanced',     # 通用增强版
+            'webimage',             # 网络图片
+        )
         api_name_combo.place(x=80, y=70)
 
         # 超时时间
@@ -62,17 +69,26 @@ class SettingsWindow:
         ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).place(x=10, y=160)
 
         # 说明
+        info_text = """说明:
+• general_basic: 通用标准识别（快速、经济）
+• accurate: 高精度带坐标（推荐用于游戏）
+• accurate_basic: 高精度基础（不带坐标）
+• general: 通用版（支持更多场景）
+• general_enhanced: 通用增强版（功能更强）
+• webimage: 网络图片识别（针对网络图片优化）"""
+
         info_label = ttk.Label(
             ocr_frame,
-            text="说明:\n• general_basic: 标准版（快速、经济）\n• accurate: 高精度版（带坐标，稍慢）",
+            text=info_text,
             foreground="gray",
-            wraplength=540
+            justify="left",
+            wraplength=590
         )
-        info_label.place(x=10, y=170)
+        info_label.place(x=10, y=190)
 
         # 应用设置分组
         app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=280, width=560, height=100)
+        app_frame.place(x=20, y=330, width=610, height=80)
 
         # 监控间隔
         ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
@@ -81,10 +97,10 @@ class SettingsWindow:
 
         # 按钮
         button_frame = ttk.Frame(self.window)
-        button_frame.place(x=20, y=390, width=560, height=50)
+        button_frame.place(x=20, y=420, width=610, height=50)
 
-        ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=300, y=10)
-        ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=430, y=10)
+        ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=320, y=10)
+        ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=450, y=10)
 
     def _load_config(self):
         """加载当前配置到界面"""
