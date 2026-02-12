@@ -71,29 +71,28 @@ class AppController:
             return
 
         # 余额识别区域配置（多个备用区域，依次尝试）
-        # 根据用户之前成功的识别：x=279, y=21, width=18, height=23
         balance_regions = [
-            # 区域1: 基于之前成功识别的位置 (x=279, y=21)
+            # 区域1: 使用配置的区域
             {
-                'x': 270,
-                'y': 10,
-                'width': 50,
-                'height': 50,
-                'name': '原位置（x=279附近）'
+                'x': self._cfg.balance_region.x,
+                'y': self._cfg.balance_region.y,
+                'width': self._cfg.balance_region.width,
+                'height': self._cfg.balance_region.height,
+                'name': '配置区域'
             },
             # 区域2: 扩大一些
             {
-                'x': 250,
-                'y': 5,
-                'width': 100,
-                'height': 60,
-                'name': '原位置扩大'
+                'x': self._cfg.balance_region.x - 20,
+                'y': self._cfg.balance_region.y - 5,
+                'width': self._cfg.balance_region.width + 40,
+                'height': self._cfg.balance_region.height + 10,
+                'name': '配置区域扩大'
             },
             # 区域3: 顶部区域
             {
                 'x': 200,
                 'y': 0,
-                'width': 150,
+                'width': 200,
                 'height': 80,
                 'name': '顶部区域'
             },
@@ -227,12 +226,12 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        # 余额识别区域（基于之前成功识别的位置：x=279, y=21）
+        # 余额识别区域（使用配置）
         balance_region = {
-            'x': 270,
-            'y': 10,
-            'width': 50,
-            'height': 50
+            'x': self._cfg.balance_region.x,
+            'y': self._cfg.balance_region.y,
+            'width': self._cfg.balance_region.width,
+            'height': self._cfg.balance_region.height
         }
 
         if self._cfg.ocr.debug_mode:
@@ -282,7 +281,7 @@ class AppController:
                     print(f"[余额识别（单独）] 原始响应: {r.raw}")
             self._ui.show_info(f"余额识别失败: {r.error if r.error else '未识别到文字'}")
 
-    def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
+    def update_config(self, ocr_config, watch_interval_ms: int, balance_region=None) -> bool:
         """更新配置"""
         try:
             from core.config import AppConfig, OcrConfig
@@ -295,6 +294,7 @@ class AppController:
                 watch_interval_ms=watch_interval_ms,
                 elevated_marker=self._cfg.elevated_marker,
                 ocr=ocr_config,
+                balance_region=balance_region if balance_region else self._cfg.balance_region,
             )
 
             # 保存到文件

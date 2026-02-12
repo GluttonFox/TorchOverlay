@@ -89,12 +89,29 @@ class SettingsWindow:
 
         # 应用设置分组
         app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=330, width=610, height=80)
+        app_frame.place(x=20, y=330, width=610, height=130)
 
         # 监控间隔
         ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
         self.interval_var = tk.IntVar()
         ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).place(x=120, y=10)
+
+        # 余额识别区域
+        ttk.Label(app_frame, text="余额区域(X):").place(x=10, y=40)
+        self.balance_x_var = tk.IntVar()
+        ttk.Spinbox(app_frame, from_=0, to=9999, textvariable=self.balance_x_var, width=8).place(x=120, y=40)
+
+        ttk.Label(app_frame, text="余额区域(Y):").place(x=10, y=70)
+        self.balance_y_var = tk.IntVar()
+        ttk.Spinbox(app_frame, from_=0, to=9999, textvariable=self.balance_y_var, width=8).place(x=120, y=70)
+
+        ttk.Label(app_frame, text="余额区域(宽):").place(x=220, y=40)
+        self.balance_width_var = tk.IntVar()
+        ttk.Spinbox(app_frame, from_=10, to=9999, textvariable=self.balance_width_var, width=8).place(x=320, y=40)
+
+        ttk.Label(app_frame, text="余额区域(高):").place(x=220, y=70)
+        self.balance_height_var = tk.IntVar()
+        ttk.Spinbox(app_frame, from_=10, to=9999, textvariable=self.balance_height_var, width=8).place(x=320, y=70)
 
         # 按钮
         button_frame = ttk.Frame(self.window)
@@ -118,6 +135,12 @@ class SettingsWindow:
         self.retries_var.set(self._cfg.ocr.max_retries)
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
+
+        # 余额识别区域
+        self.balance_x_var.set(self._cfg.balance_region.x)
+        self.balance_y_var.set(self._cfg.balance_region.y)
+        self.balance_width_var.set(self._cfg.balance_region.width)
+        self.balance_height_var.set(self._cfg.balance_region.height)
 
     def _mask_sensitive(self, value: str) -> str:
         """脱敏敏感信息，只显示前4位和最后4位"""
@@ -172,6 +195,15 @@ class SettingsWindow:
             debug_mode=self.debug_var.get(),
         )
 
+        # 创建余额区域配置
+        from core.config import BalanceRegionConfig
+        balance_region = BalanceRegionConfig(
+            x=self.balance_x_var.get(),
+            y=self.balance_y_var.get(),
+            width=self.balance_width_var.get(),
+            height=self.balance_height_var.get(),
+        )
+
         # 保存配置
-        if self._save_callback(ocr_config, self.interval_var.get()):
+        if self._save_callback(ocr_config, self.interval_var.get(), balance_region):
             self.window.destroy()
