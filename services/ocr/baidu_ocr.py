@@ -66,6 +66,15 @@ class BaiduOcrEngine(IOcrEngine):
                     raise RuntimeError(last_err)
 
                 j = resp.json()
+
+                # 调试输出原始数据
+                if self._cfg.debug_mode:
+                    print(f"\n[BaiduOcr] 原始响应数据:")
+                    print(f"  API类型: {self._cfg.api_name}")
+                    print(f"  识别结果数量: {len(j.get('words_result', []))}")
+                    if j.get('words_result'):
+                        print(f"  第一个结果: {json.dumps(j['words_result'][0], ensure_ascii=False, indent=2)}")
+
                 # 百度错误结构：error_code / error_msg
                 if "error_code" in j:
                     # token 失效常见：110/111 等（有时会出现）
@@ -148,32 +157,45 @@ class BaiduOcrEngine(IOcrEngine):
         parts = []
         words_list = []
 
-        for it in arr:
+        for idx, it in enumerate(arr):
             if isinstance(it, dict) and isinstance(it.get("words"), str):
                 text = it["words"]
                 parts.append(text)
 
-                # 尝试解析位置信息
+                # 尝试解析位置信息 - 百度OCR不同API返回格式不同
+                # 格式1: location字段中
                 location = it.get("location")
                 if location and isinstance(location, dict):
-                    word_result = OcrWordResult(
-                        text=text,
-                        x=int(location.get("left", 0)),
-                        y=int(location.get("top", 0)),
-                        width=int(location.get("width", 0)),
-                        height=int(location.get("height", 0)),
-                        raw=it,
-                    )
+                    x = int(location.get("left", 0))
+                    y = int(location.get("top", 0))
+                    width = int(location.get("width", 0))
+                    height = int(location.get("height", 0))
+                # 格式2: 直接在顶层 (某些高精度API可能这样返回)
+                elif it.get("left") is not None:
+                    x = int(it.get("left", 0))
+                    y = int(it.get("top", 0))
+                    width = int(it.get("width", 0))
+                    height = int(it.get("height", 0))
                 else:
-                    # 如果没有位置信息，创建默认值
-                    word_result = OcrWordResult(
-                        text=text,
-                        x=0,
-                        y=0,
-                        width=0,
-                        height=0,
-                        raw=it,
-                    )
+                    # 没有位置信息
+                    x = y = width = height = 0
+
+                word_result = OcrWordResult(
+                    text=text,
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=height,
+                    raw=it,
+                )
+
+                # 调试输出第一个结果的位置信息
+                if idx == 0:
+                    print(f"[BaiduOcr] 文本块: {text}")
+                    print(f"  位置信息: x={x}, y={y}, width={width}, height={height}")
+                    if x == 0 and y == 0 and width == 0 and height == 0:
+                        print(f"  ⚠️ 警告: API未返回位置信息！请使用「高精度带坐标」API（accurate）")
+
                 words_list.append(word_result)
 
         return "\n".join(parts).strip(), words_list
