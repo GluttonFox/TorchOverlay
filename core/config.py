@@ -28,9 +28,18 @@ class AppConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':
-        ocr_data = data.pop('ocr', {})
+        # 复制字典以避免修改原始数据
+        data_copy = data.copy()
+
+        # 转换 keywords 回元组（JSON 加载后会变成列表）
+        if 'keywords' in data_copy and isinstance(data_copy['keywords'], list):
+            data_copy['keywords'] = tuple(data_copy['keywords'])
+
+        # 处理 ocr 配置
+        ocr_data = data_copy.pop('ocr', {})
         ocr_config = OcrConfig.from_dict(ocr_data)
-        return cls(ocr=ocr_config, **data)
+
+        return cls(ocr=ocr_config, **data_copy)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
