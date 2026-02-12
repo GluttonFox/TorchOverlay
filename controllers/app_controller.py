@@ -251,6 +251,8 @@ class AppController:
                 self._reload_item_prices()
                 # 从config.json重新加载上次更新时间
                 self._ui._load_last_update_time()
+                # 重新加载初火源质价格
+                self._ui._load_source_price()
 
             # 显示结果
             self._ui.show_info(message)
@@ -311,40 +313,100 @@ class AppController:
             profit_ratio = "--"
 
             if item_name != "--" and item_name != "已售罄":
-                # 获取原始价格（单价）
-                unit_price = self._item_price_service.get_price_by_name(item_name)
-                if unit_price is not None:
-                    original_price = f"{unit_price:.4f}"
+                # 获取神威辉石单价
+                gem_price = self._item_price_service.get_price_by_name("神威辉石")
 
-                    # 计算转换价格（物品数量 * 原始价格）
+                # 特殊处理奥秘辉石
+                if "奥秘辉石" in item_name:
+                    self._debug_log(f"[奥秘辉石] 检测到奥秘辉石: {item_name}, 当前模式: {self._cfg.mystery_gem_mode}")
                     try:
                         quantity_int = int(item_quantity)
-                        converted_price_value = quantity_int * unit_price
-                        converted_price = f"{converted_price_value:.2f}"
 
-                        # 计算盈亏比（转换价格 / 辉石数量）
-                        if item_price != "--":
-                            try:
-                                price_int = int(item_price)
-                                if price_int > 0:
-                                    profit_ratio_value = converted_price_value / price_int
-                                    profit_ratio = f"{profit_ratio_value:.2f}"
-                            except ValueError:
-                                pass
+                        if gem_price is not None and gem_price > 0:
+                            import random
+
+                            # 判断是小奥秘还是大奥秘
+                            if "小" in item_name:
+                                # 小奥秘辉石：50-100神威辉石
+                                if self._cfg.mystery_gem_mode == "min":
+                                    gem_count = 50
+                                elif self._cfg.mystery_gem_mode == "max":
+                                    gem_count = 100
+                                else:  # random
+                                    gem_count = random.randint(50, 100)
+                            else:
+                                # 大奥秘辉石：100-900神威辉石
+                                if self._cfg.mystery_gem_mode == "min":
+                                    gem_count = 100
+                                elif self._cfg.mystery_gem_mode == "max":
+                                    gem_count = 900
+                                else:  # random
+                                    gem_count = random.randint(100, 900)
+
+                            self._debug_log(f"[奥秘辉石] 计算方式: gem_count={gem_count}, quantity={quantity_int}, gem_price={gem_price}")
+
+                            # 计算原始价格（神威辉石数量 × 数量 × 神威辉石单价）
+                            original_price_value = gem_count * quantity_int * gem_price
+                            original_price = f"{original_price_value:.2f}"
+                            self._debug_log(f"[奥秘辉石] 原始价格: {original_price}")
+
+                            # 计算转换价格（物品价格 × 神威辉石单价）
+                            if item_price != "--":
+                                try:
+                                    price_int = int(item_price)
+                                    if price_int > 0:
+                                        converted_price_value = price_int * gem_price
+                                        converted_price = f"{converted_price_value:.2f}"
+                                        self._debug_log(f"[奥秘辉石] 转换价格: {converted_price}")
+
+                                        # 计算盈亏量（原始价格 - 转换价格）
+                                        profit_ratio_value = original_price_value - converted_price_value
+                                        profit_ratio = f"{profit_ratio_value:.2f}"
+                                        self._debug_log(f"[奥秘辉石] 盈亏量: {profit_ratio}")
+                                except ValueError:
+                                    pass
                     except ValueError:
                         pass
+                else:
+                    # 获取物品单价
+                    unit_price = self._item_price_service.get_price_by_name(item_name)
+                    if unit_price is not None:
+                        # 计算原始价格（单价 × 数量）
+                        try:
+                            quantity_int = int(item_quantity)
+                            original_price_value = quantity_int * unit_price
+                            original_price = f"{original_price_value:.2f}"
+
+                            # 计算转换价格（物品价格 × 神威辉石单价）
+                            if gem_price is not None and gem_price > 0:
+                                if item_price != "--":
+                                    try:
+                                        price_int = int(item_price)
+                                        if price_int > 0:
+                                            converted_price_value = price_int * gem_price
+                                            converted_price = f"{converted_price_value:.2f}"
+
+                                            # 计算盈亏量（原始价格 - 转换价格）
+                                            profit_ratio_value = original_price_value - converted_price_value
+                                            profit_ratio = f"{profit_ratio_value:.2f}"
+                                    except ValueError:
+                                        pass
+                        except ValueError:
+                            pass
 
             self._ui.add_item_result(
                 idx + 1, region.name, item_name, item_quantity, item_price,
                 original_price, converted_price, profit_ratio
             )
 
-    def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
+    def update_config(self, ocr_config, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
         """更新配置
 
         Args:
             ocr_config: 新的OCR配置
             watch_interval_ms: 新的监视间隔
+            enable_tax_calculation: 是否开启税率计算
+            mystery_gem_mode: 奥秘辉石处理模式
 
         Returns:
             是否更新成功
@@ -360,6 +422,9 @@ class AppController:
                 watch_interval_ms=watch_interval_ms,
                 elevated_marker=self._cfg.elevated_marker,
                 ocr=ocr_config,
+                last_price_update=self._cfg.last_price_update,
+                enable_tax_calculation=enable_tax_calculation,
+                mystery_gem_mode=mystery_gem_mode,
             )
 
             # 保存配置文件

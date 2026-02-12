@@ -12,7 +12,7 @@ class SettingsWindow:
 
         self.window = tk.Toplevel(parent)
         self.window.title("设置")
-        self.window.geometry("650x550")
+        self.window.geometry("650x600")
         self.window.resizable(False, False)
         self.window.grab_set()  # 模态窗口
 
@@ -89,16 +89,38 @@ class SettingsWindow:
 
         # 应用设置分组
         app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=270, width=610, height=70)
+        app_frame.place(x=20, y=270, width=610, height=180)
 
         # 监控间隔
         ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
         self.interval_var = tk.IntVar()
         ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).place(x=120, y=10)
 
+        # 税率计算开关
+        self.tax_calc_var = tk.BooleanVar()
+        ttk.Checkbutton(app_frame, text="开启税率计算", variable=self.tax_calc_var).place(x=10, y=40)
+
+        # 奥秘辉石计算模式
+        ttk.Label(app_frame, text="奥秘辉石模式:").place(x=10, y=70)
+        self.mystery_gem_mode_var = tk.StringVar()
+        mystery_gem_combo = ttk.Combobox(app_frame, textvariable=self.mystery_gem_mode_var, width=15, state="readonly")
+        mystery_gem_combo['values'] = ('最小', '最大', '随机')
+        mystery_gem_combo.place(x=120, y=70)
+
+        # 奥秘辉石说明
+        gem_info_text = "奥秘辉石价格: 小=50-100神威辉石, 大=100-900神威辉石"
+
+        gem_info_label = ttk.Label(
+            app_frame,
+            text=gem_info_text,
+            foreground="gray",
+            justify="left"
+        )
+        gem_info_label.place(x=10, y=100)
+
         # 按钮
         button_frame = ttk.Frame(self.window)
-        button_frame.place(x=20, y=350, width=610, height=50)
+        button_frame.place(x=20, y=460, width=610, height=50)
 
         ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=320, y=10)
         ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=450, y=10)
@@ -118,6 +140,11 @@ class SettingsWindow:
         self.retries_var.set(self._cfg.ocr.max_retries)
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
+        self.tax_calc_var.set(self._cfg.enable_tax_calculation)
+
+        # 加载奥秘辉石模式
+        mode_map = {'min': '最小', 'max': '最大', 'random': '随机'}
+        self.mystery_gem_mode_var.set(mode_map.get(self._cfg.mystery_gem_mode, '最小'))
 
     def _mask_sensitive(self, value: str) -> str:
         """脱敏敏感信息，只显示前4位和最后4位"""
@@ -162,6 +189,10 @@ class SettingsWindow:
         chinese_api_name = self.api_name_var.get()
         api_name = self._get_api_name_from_chinese(chinese_api_name)
 
+        # 转换奥秘辉石模式
+        mode_map = {'最小': 'min', '最大': 'max', '随机': 'random'}
+        mystery_gem_mode = mode_map.get(self.mystery_gem_mode_var.get(), 'min')
+
         # 创建新的配置对象
         ocr_config = OcrConfig(
             api_key=api_key,
@@ -173,5 +204,5 @@ class SettingsWindow:
         )
 
         # 保存配置
-        if self._save_callback(ocr_config, self.interval_var.get()):
+        if self._save_callback(ocr_config, self.interval_var.get(), self.tax_calc_var.get(), mystery_gem_mode):
             self.window.destroy()

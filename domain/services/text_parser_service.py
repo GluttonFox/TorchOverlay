@@ -8,7 +8,7 @@ class TextParserService:
 
     # 预编译正则表达式
     _STUFF_PATTERN = re.compile(r'^(TUFF|STUFF)\s*', re.IGNORECASE)
-    _QUANTITY_PATTERN = re.compile(r'X\s*(\d+)', re.IGNORECASE)
+    _QUANTITY_PATTERN = re.compile(r'[×XxⅩ✕✖☓✗]\s*(\d+)')  # 匹配各种X/乘号后面跟的数字
     _PRICE_PATTERN = re.compile(r'(\d+)\s*$')
     _NUMBERS_PATTERN = re.compile(r'\d+')
 

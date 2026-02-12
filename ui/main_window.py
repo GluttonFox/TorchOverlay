@@ -26,6 +26,15 @@ class MainWindow:
         self.lbl_balance = tk.Label(self.root, text="--", font=("Segoe UI", 16, "bold"), fg="#2ECC71")
         self.lbl_balance.place(x=120, y=50, width=250, height=35)
 
+        # 初火源质价格显示
+        self.lbl_source_price = tk.Label(
+            self.root,
+            text="初火源质:神威辉石 1:--",
+            font=("Segoe UI", 9),
+            fg="#666666"
+        )
+        self.lbl_source_price.place(x=380, y=58, width=220, height=20)
+
         # 物品识别结果表格
         tk.Label(self.root, text="物品识别结果：", font=("Segoe UI", 12, "bold")).place(x=16, y=100)
 
@@ -49,6 +58,9 @@ class MainWindow:
         # 从config.json加载上次更新时间
         self._load_last_update_time()
 
+        # 加载初火源质价格
+        self._load_source_price()
+
         # 创建表格
         columns = ("index", "name", "quantity", "price", "original_price", "converted_price", "profit_ratio")
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings", height=8)
@@ -58,7 +70,7 @@ class MainWindow:
         self.tree.heading("price", text="辉石数量")
         self.tree.heading("original_price", text="原始价格")
         self.tree.heading("converted_price", text="转换价格")
-        self.tree.heading("profit_ratio", text="盈亏比")
+        self.tree.heading("profit_ratio", text="盈亏量")
 
         self.tree.column("index", width=40, anchor="center", stretch=False)
         self.tree.column("name", width=200, anchor="w", stretch=False)
@@ -155,6 +167,45 @@ class MainWindow:
             print(f"加载上次更新时间失败: {e}")
             self.lbl_last_update.config(text="上次更新：未更新")
 
+    def _load_source_price(self):
+        """从item.json加载初火源质价格"""
+        try:
+            item_path = os.path.join(os.path.dirname(__file__), '..', 'item.json')
+            if os.path.exists(item_path):
+                with open(item_path, 'r', encoding='utf-8') as f:
+                    item_data = json.load(f)
+
+                # 初火源质的价格固定为1，神威辉石的ID是5210
+                if '5210' in item_data:
+                    gem_price = item_data['5210'].get('Price')
+                    if gem_price is not None and gem_price != 0:
+                        converted_price = 1 / gem_price
+                        price_str = f"{converted_price:.4f}"
+                        self.lbl_source_price.config(text=f"初火源质:神威辉石 1:{price_str}")
+        except Exception as e:
+            print(f"加载初火源质价格失败: {e}")
+
+    def update_source_price(self):
+        """更新初火源质价格显示"""
+        try:
+            item_path = os.path.join(os.path.dirname(__file__), '..', 'item.json')
+            if os.path.exists(item_path):
+                with open(item_path, 'r', encoding='utf-8') as f:
+                    item_data = json.load(f)
+
+                # 初火源质的价格固定为1，神威辉石的ID是5210
+                if '5210' in item_data:
+                    gem_price = item_data['5210'].get('Price')
+                    if gem_price is not None and gem_price != 0:
+                        converted_price = 1 / gem_price
+                        price_str = f"{converted_price:.4f}"
+                        self.lbl_source_price.config(text=f"初火源质:神威辉石 1:{price_str}")
+                    else:
+                        self.lbl_source_price.config(text="初火源质:神威辉石 1:--")
+        except Exception as e:
+            print(f"更新初火源质价格失败: {e}")
+            self.lbl_source_price.config(text="初火源质:神威辉石 1:--")
+
     def clear_items_table(self):
         """清空物品表格"""
         for item in self.tree.get_children():
@@ -163,6 +214,19 @@ class MainWindow:
     def add_item_result(self, index: int, region: str, name: str, quantity: str, price: str,
                        original_price: str = "--", converted_price: str = "--", profit_ratio: str = "--"):
         """添加物品识别结果到表格"""
+        # 根据盈亏量的值添加特殊符号
+        if profit_ratio != "--":
+            try:
+                profit_value = float(profit_ratio)
+                if profit_value > 0:
+                    profit_ratio = f"↑{profit_ratio:.2f}"
+                elif profit_value < 0:
+                    profit_ratio = f"↓{profit_ratio:.2f}"
+                else:
+                    profit_ratio = f"→{profit_ratio:.2f}"
+            except ValueError:
+                pass
+
         self.tree.insert("", "end", values=(index, name, quantity, price, original_price, converted_price, profit_ratio))
 
     def schedule(self, delay_ms: int, fn):
@@ -181,10 +245,10 @@ class MainWindow:
         latest_cfg = self._controller.get_config()
         SettingsWindow(self.root, latest_cfg, self._save_config_callback)
 
-    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int) -> bool:
+    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
         """保存配置回调"""
         try:
-            result = self._controller.update_config(ocr_config, watch_interval_ms)
+            result = self._controller.update_config(ocr_config, watch_interval_ms, enable_tax_calculation, mystery_gem_mode)
             if result:
                 # 更新UI中保存的配置引用
                 self._cfg = self._controller.get_config()

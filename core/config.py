@@ -190,6 +190,8 @@ class AppConfig:
     elevated_marker: str = "--elevated"
     ocr: OcrConfig = field(default_factory=OcrConfig)
     last_price_update: str = ""  # 上次物价更新时间（ISO格式字符串）
+    enable_tax_calculation: bool = False  # 是否开启税率计算
+    mystery_gem_mode: str = "min"  # 奥秘辉石处理模式: min, max, random
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':

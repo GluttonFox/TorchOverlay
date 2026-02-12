@@ -151,6 +151,10 @@ class PriceUpdateService:
                 self._debug_print(f"[调试] 强制更新模式已启用")
 
             for item_id, api_price in data.items():
+                # 跳过初火源质（ID: 100300），其价格固定为1
+                if item_id == '100300':
+                    continue
+                    
                 if item_id in existing_data:
                     # API数据结构是 {id: price}，price是数字，不是对象
                     if api_price is not None:
