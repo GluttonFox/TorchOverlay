@@ -71,30 +71,31 @@ class AppController:
             return
 
         # 余额识别区域配置（多个备用区域，依次尝试）
+        # 根据用户之前成功的识别：x=279, y=21, width=18, height=23
         balance_regions = [
-            # 区域1: 根据用户提供的位置 x=279, y=21, 扩大
+            # 区域1: 基于之前成功识别的位置 (x=279, y=21)
+            {
+                'x': 270,
+                'y': 10,
+                'width': 50,
+                'height': 50,
+                'name': '原位置（x=279附近）'
+            },
+            # 区域2: 扩大一些
             {
                 'x': 250,
-                'y': 10,
+                'y': 5,
                 'width': 100,
-                'height': 50,
+                'height': 60,
                 'name': '原位置扩大'
             },
-            # 区域2: 根据识别到的位置 x=31, y=14, 扩大
+            # 区域3: 顶部区域
             {
-                'x': 20,
-                'y': 5,
-                'width': 80,
-                'height': 40,
-                'name': '新位置扩大'
-            },
-            # 区域3: 顶部更大区域
-            {
-                'x': 0,
+                'x': 200,
                 'y': 0,
-                'width': 200,
+                'width': 150,
                 'height': 80,
-                'name': '顶部大区域'
+                'name': '顶部区域'
             },
         ]
 
@@ -104,9 +105,9 @@ class AppController:
             if self._cfg.ocr.debug_mode:
                 print(f"\n[余额识别] 尝试区域 {idx + 1}/{len(balance_regions)} ({region['name']}): x={region['x']}, y={region['y']}, width={region['width']}, height={region['height']}")
 
-            # 截取余额区域（启用预处理以提高识别准确率）
+            # 截取余额区域（先不预处理，保持原有识别方式）
             balance_out_path = os.path.join(os.getcwd(), f"captures/last_balance_{idx}.png")
-            cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, region, timeout_sec=2.5, preprocess=True)
+            cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, region, timeout_sec=2.5, preprocess=False)
 
             if not cap.ok or not cap.path:
                 if self._cfg.ocr.debug_mode:
@@ -115,6 +116,13 @@ class AppController:
 
             if self._cfg.ocr.debug_mode:
                 print(f"[余额识别] 截图已保存到: {balance_out_path}")
+                # 尝试获取图片尺寸
+                try:
+                    from PIL import Image
+                    img = Image.open(cap.path)
+                    print(f"[余额识别] 截图尺寸: {img.width}x{img.height}")
+                except Exception:
+                    pass
 
             # 识别余额
             r = self._ocr.recognize(cap.path)
@@ -219,11 +227,11 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        # 余额识别区域
+        # 余额识别区域（基于之前成功识别的位置：x=279, y=21）
         balance_region = {
-            'x': 250,
+            'x': 270,
             'y': 10,
-            'width': 100,
+            'width': 50,
             'height': 50
         }
 
@@ -237,9 +245,9 @@ class AppController:
         if self._cfg.ocr.debug_mode:
             print(f"[余额识别（单独）] 完整client区域已保存到: {full_client_path}")
 
-        # 截取余额区域（启用预处理以提高识别准确率）
+        # 截取余额区域（不预处理，保持原有识别方式）
         balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
-        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=True)
+        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=False)
 
         if not cap.ok or not cap.path:
             self._ui.show_info(f"截图失败：{cap.error}")
@@ -247,6 +255,13 @@ class AppController:
 
         if self._cfg.ocr.debug_mode:
             print(f"[余额识别（单独）] 余额区域已保存到: {balance_out_path}")
+            # 尝试获取图片尺寸
+            try:
+                from PIL import Image
+                img = Image.open(cap.path)
+                print(f"[余额识别（单独）] 截图尺寸: {img.width}x{img.height}")
+            except Exception:
+                pass
 
         r = self._ocr.recognize(cap.path)
         if r.ok and r.text:
