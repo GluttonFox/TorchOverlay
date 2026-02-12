@@ -6,6 +6,9 @@ from datetime import datetime
 from core.config import AppConfig, OcrConfig
 from domain.models import BoundGame
 from ui.settings_window import SettingsWindow
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 class MainWindow:
     """UI 层：只做展示与交互，不做业务判断。"""
@@ -154,7 +157,7 @@ class MainWindow:
                         price_str = f"{converted_price:.4f}"
                         self.lbl_source_price.config(text=f"初火源质:神威辉石 1:{price_str}")
         except Exception as e:
-            print(f"加载初火源质价格失败: {e}")
+            logger.error(f"加载初火源质价格失败: {e}")
 
     def update_source_price(self):
         """更新初火源质价格显示"""
@@ -174,7 +177,7 @@ class MainWindow:
                     else:
                         self.lbl_source_price.config(text="初火源质:神威辉石 1:--")
         except Exception as e:
-            print(f"更新初火源质价格失败: {e}")
+            logger.error(f"更新初火源质价格失败: {e}")
             self.lbl_source_price.config(text="初火源质:神威辉石 1:--")
 
     def schedule(self, delay_ms: int, fn):

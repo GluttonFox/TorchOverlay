@@ -27,9 +27,9 @@ class ItemPriceService:
                                 self._item_prices[item_info['Name']] = float(price)
                             except (ValueError, TypeError):
                                 # 价格格式错误，跳过
-                                print(f"警告: 物品 {item_info['Name']} 的价格格式错误: {price}")
+                                logger.warning(f"物品 {item_info['Name']} 的价格格式错误: {price}")
         except Exception as e:
-            print(f"加载物品价格失败: {e}")
+            logger.error(f"加载物品价格失败: {e}")
 
     def get_price_by_name(self, name: str) -> Optional[float]:
         """根据物品名称获取价格

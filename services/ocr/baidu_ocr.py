@@ -10,6 +10,9 @@ from typing import Any
 import requests
 
 from services.interfaces import IOcrService, OcrResult
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -79,11 +82,11 @@ class BaiduOcrEngine(IOcrService):
 
                 # 调试输出原始数据
                 if self._cfg.debug_mode:
-                    print(f"\n[BaiduOcr] 原始响应数据:")
-                    print(f"  API类型: {self._cfg.api_name}")
-                    print(f"  识别结果数量: {len(j.get('words_result', []))}")
+                    logger.debug(f"[BaiduOcr] 原始响应数据:")
+                    logger.debug(f"  API类型: {self._cfg.api_name}")
+                    logger.debug(f"  识别结果数量: {len(j.get('words_result', []))}")
                     if j.get('words_result'):
-                        print(f"  第一个结果: {json.dumps(j['words_result'][0], ensure_ascii=False, indent=2)}")
+                        logger.debug(f"  第一个结果: {json.dumps(j['words_result'][0], ensure_ascii=False, indent=2)}")
 
                 # 百度错误结构：error_code / error_msg
                 if "error_code" in j:

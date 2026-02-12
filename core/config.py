@@ -3,6 +3,10 @@ import json
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+from core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def _calculate_scale(client_width: int, client_height: int) -> tuple[float, float]:
     """计算缩放比例
@@ -227,7 +231,7 @@ class AppConfig:
                     data = json.load(f)
                 return cls.from_dict(data)
             except Exception as e:
-                print(f"加载配置文件失败: {e}")
+                logger.error(f"加载配置文件失败: {e}")
         return cls()
 
     def save(self) -> bool:
@@ -238,5 +242,5 @@ class AppConfig:
                 json.dump(self.to_dict(), f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存配置文件失败: {e}")
+            logger.error(f"保存配置文件失败: {e}")
             return False

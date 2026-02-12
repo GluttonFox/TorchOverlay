@@ -3,6 +3,7 @@ from typing import Any
 
 from core.config import AppConfig
 from core.paths import ProjectPaths
+from core.logger import get_logger
 from services.interfaces import (
     IGameBinder,
     IProcessWatcher,
@@ -13,6 +14,8 @@ from services.interfaces import (
 from services.overlay.target_window import get_client_rect_in_screen
 from domain.services import TextParserService, RegionCalculatorService
 from domain.models import Region
+
+logger = get_logger(__name__)
 
 
 class AppController:
@@ -77,7 +80,7 @@ class AppController:
             **kwargs: 打印关键字参数
         """
         if self._cfg.ocr.debug_mode:
-            print(*args, **kwargs)
+            logger.debug(*args, **kwargs)
 
     def on_window_shown(self):
         """窗口显示后的初始化"""
@@ -576,7 +579,7 @@ class AppController:
 
             return True
         except Exception as e:
-            print(f"更新配置失败: {e}")
+            logger.error(f"更新配置失败: {e}")
             return False
 
     def get_config(self):

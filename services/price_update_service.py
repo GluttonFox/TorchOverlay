@@ -5,6 +5,10 @@ import time
 from typing import Optional
 from datetime import datetime
 
+from core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class PriceUpdateService:
     """物价更新服务"""
@@ -21,9 +25,9 @@ class PriceUpdateService:
         self._load_last_update_time()
 
     def _debug_print(self, *args, **kwargs):
-        """调试输出，同时打印到控制台和日志文件"""
+        """调试输出"""
         message = ' '.join(str(arg) for arg in args)
-        print(message)
+        logger.debug(message)
 
         # 写入日志文件
         try:

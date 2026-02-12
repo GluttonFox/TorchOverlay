@@ -11,6 +11,9 @@ from services.overlay.overlay_service import OverlayService
 from services.item_price_service import ItemPriceService
 from services.price_update_service import PriceUpdateService
 from domain.services import TextParserService, RegionCalculatorService
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AppFactory:
@@ -27,7 +30,7 @@ class AppFactory:
     def _debug_print(self, *args, **kwargs):
         """调试输出，仅在调试模式下打印"""
         if self._cfg.ocr.debug_mode:
-            print(*args, **kwargs)
+            logger.debug(*args, **kwargs)
 
     def create_config(self) -> AppConfig:
         return self._cfg
@@ -95,6 +98,10 @@ class AppFactory:
         self._debug_print(f"  API Key 长度: {len(cfg.api_key)}")
         self._debug_print(f"  Secret Key 长度: {len(cfg.secret_key)}")
         self._debug_print(f"  Debug Mode: {cfg.debug_mode}")
+        logger.debug("[AppFactory] 创建 OCR 引擎:")
+        logger.debug(f"  API Key 长度: {len(cfg.api_key)}")
+        logger.debug(f"  Secret Key 长度: {len(cfg.secret_key)}")
+        logger.debug(f"  Debug Mode: {cfg.debug_mode}")
         return BaiduOcrEngine(cfg)
 
     def recreate_ocr_engine(self):
