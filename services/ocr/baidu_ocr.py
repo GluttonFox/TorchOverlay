@@ -8,7 +8,7 @@ from typing import Any
 
 import requests
 
-from services.ocr.base_ocr import IOcrEngine, OcrResult
+from services.ocr.base_ocr import IOcrEngine, OcrResult, OcrWordResult
 
 
 @dataclass(frozen=True)
@@ -78,8 +78,8 @@ class BaiduOcrEngine(IOcrEngine):
                         continue
                     return OcrResult(ok=False, raw=j, error=last_err)
 
-                text = self._parse_words_result(j)
-                return OcrResult(ok=True, text=text, raw=j)
+                text, words_list = self._parse_words_result(j)
+                return OcrResult(ok=True, text=text, words=words_list, raw=j)
 
             except Exception as e:
                 last_err = str(e)
@@ -139,13 +139,41 @@ class BaiduOcrEngine(IOcrEngine):
             return base64.b64encode(f.read()).decode("utf-8")
 
     @staticmethod
-    def _parse_words_result(j: dict[str, Any]) -> str:
-        # 标准通用：words_result: [{"words": "..."}...]
+    def _parse_words_result(j: dict[str, Any]) -> tuple[str, list[OcrWordResult]]:
+        """解析OCR结果，返回文本和带位置信息的文字块列表"""
         arr = j.get("words_result")
         if not isinstance(arr, list):
-            return ""
+            return "", []
+
         parts = []
+        words_list = []
+
         for it in arr:
             if isinstance(it, dict) and isinstance(it.get("words"), str):
-                parts.append(it["words"])
-        return "\n".join(parts).strip()
+                text = it["words"]
+                parts.append(text)
+
+                # 尝试解析位置信息
+                location = it.get("location")
+                if location and isinstance(location, dict):
+                    word_result = OcrWordResult(
+                        text=text,
+                        x=int(location.get("left", 0)),
+                        y=int(location.get("top", 0)),
+                        width=int(location.get("width", 0)),
+                        height=int(location.get("height", 0)),
+                        raw=it,
+                    )
+                else:
+                    # 如果没有位置信息，创建默认值
+                    word_result = OcrWordResult(
+                        text=text,
+                        x=0,
+                        y=0,
+                        width=0,
+                        height=0,
+                        raw=it,
+                    )
+                words_list.append(word_result)
+
+        return "\n".join(parts).strip(), words_list

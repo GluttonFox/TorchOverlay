@@ -6,6 +6,7 @@ from services.game_binder import GameBinder
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
 from services.ocr.base_ocr import IOcrEngine
+from services.overlay.overlay_service import OverlayService, OverlayTextItem
 
 
 class AppController:
@@ -18,12 +19,14 @@ class AppController:
         watcher: ProcessWatcher,
         capture: CaptureService,
         ocr: IOcrEngine,
+        overlay: OverlayService,
     ):
         self._cfg = cfg
         self._binder = binder
         self._watcher = watcher
         self._capture = capture
         self._ocr = ocr
+        self._overlay = overlay
         self._ui = None
 
     def attach_ui(self, ui):
@@ -41,6 +44,7 @@ class AppController:
 
             retry = self._ui.ask_bind_retry_or_exit()
             if not retry:
+                self._overlay.close()  # 关闭overlay
                 self._ui.close()
                 return
 
@@ -49,9 +53,11 @@ class AppController:
             bound = self._binder.bound
             if bound:
                 if not self._binder.is_bound_hwnd_valid():
+                    self._overlay.close()  # 关闭overlay
                     self._ui.close()
                     return
                 if not self._watcher.is_alive(bound):
+                    self._overlay.close()  # 关闭overlay
                     self._ui.close()
                     return
             self._ui.schedule(self._watcher.interval_ms, tick)
@@ -78,7 +84,43 @@ class AppController:
             self._ui.show_info(f"OCR失败：{r.error}")
             return
 
-        self._ui.show_info(r.text if r.text else "未识别到文字")
+        # 显示识别文本和坐标信息
+        if r.text:
+            # 创建或更新overlay
+            if not self._overlay.is_visible():
+                self._overlay.create_overlay(bound.hwnd)
+
+            # 转换OCR结果为overlay文本项
+            text_items = []
+            if r.words:
+                for word in r.words:
+                    text_item = OverlayTextItem(
+                        text=word.text,
+                        x=word.x,
+                        y=word.y,
+                        width=word.width,
+                        height=word.height,
+                        color="#00FF00",
+                        font_size=14,
+                    )
+                    text_items.append(text_item)
+
+                # 在overlay上显示文本
+                self._overlay.show_texts(text_items)
+
+                # 在控制台输出坐标信息
+                if self._cfg.ocr.debug_mode:
+                    print("\n[Overlay] 识别到的文本及坐标信息:")
+                    for word in r.words:
+                        print(f"  文本: {word.text}")
+                        print(f"  位置: x={word.x}, y={word.y}, width={word.width}, height={word.height}")
+                        print(f"  边界: ({word.x}, {word.y}) - ({word.x + word.width}, {word.y + word.height})")
+            else:
+                self._overlay.close()
+                self._ui.show_info(r.text)
+        else:
+            self._overlay.close()
+            self._ui.show_info("未识别到文字")
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
         """更新配置"""

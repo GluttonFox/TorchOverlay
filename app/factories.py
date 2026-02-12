@@ -7,6 +7,7 @@ from services.process_watcher import ProcessWatcher
 from ui.main_window import MainWindow
 from services.capture_service import CaptureService
 from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
+from services.overlay.overlay_service import OverlayService
 
 
 class AppFactory:
@@ -44,13 +45,19 @@ class AppFactory:
     def create_controller(self) -> AppController:
         binder = self.create_game_binder()
         watcher = self.create_process_watcher()
-        return AppController(cfg=self._cfg, binder=binder, watcher=watcher)
+        capture = self.create_capture_service()
+        ocr = self.create_ocr_engine()
+        overlay = self.create_overlay_service()
+        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay)
 
     def create_main_window(self, controller: AppController) -> MainWindow:
         return MainWindow(cfg=self._cfg, controller=controller)
 
     def create_capture_service(self) -> CaptureService:
         return CaptureService()
+
+    def create_overlay_service(self) -> OverlayService:
+        return OverlayService()
 
     def create_ocr_engine(self):
         cfg = BaiduOcrConfig(
