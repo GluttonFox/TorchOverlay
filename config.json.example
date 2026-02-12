@@ -1,0 +1,18 @@
+{
+    "app_title_prefix": "Torch",
+    "keywords": [
+        "火炬之光无限",
+        "火炬之光",
+        "Torchlight"
+    ],
+    "watch_interval_ms": 500,
+    "elevated_marker": "--elevated",
+    "ocr": {
+        "api_key": "YOUR_BAIDU_OCR_API_KEY",
+        "secret_key": "YOUR_BAIDU_OCR_SECRET_KEY",
+        "api_name": "accurate",
+        "timeout_sec": 15.0,
+        "max_retries": 2,
+        "debug_mode": false
+    }
+}

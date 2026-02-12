@@ -8,8 +8,11 @@
 - ✅ 游戏进程监控
 - ✅ 游戏窗口截图（支持client区域）
 - ✅ 百度OCR文字识别（支持标准版和高精度版）
+- ✅ 余额自动识别功能
 - ✅ 图形化设置界面
 - ✅ 自动DPI感知
+- ✅ 完善的日志系统
+- ✅ 灵活的配置管理
 
 ## 安装
 
@@ -79,6 +82,8 @@ TorchOverlay/
 │   └── app_controller.py  # 业务逻辑控制器
 ├── core/                   # 核心模块
 │   ├── config.py          # 配置管理
+│   ├── constants.py       # 常量定义
+│   ├── logger.py         # 日志系统
 │   └── models.py          # 数据模型
 ├── services/               # 服务层
 │   ├── ocr/              # OCR服务
@@ -92,10 +97,64 @@ TorchOverlay/
 │   ├── main_window.py     # 主窗口
 │   └── settings_window.py # 设置窗口
 ├── captures/              # 截图输出目录
+├── logs/                  # 日志输出目录
 ├── main.py               # 程序入口
 ├── requirements.txt      # 依赖列表
+├── config.json.example  # 配置文件模板
+├── range.json.example   # 余额区域配置模板
 └── .env.example         # 环境变量示例
 ```
+
+## 配置文件
+
+### config.json
+主配置文件，包含OCR API密钥和其他应用设置。
+
+首次运行时，程序会自动生成配置文件，或使用提供的模板：
+```bash
+cp config.json.example config.json
+```
+
+### range.json
+余额识别区域配置文件，定义余额识别的位置和大小。
+
+首次运行时，程序会自动生成默认配置，或使用提供的模板：
+```bash
+cp range.json.example range.json
+```
+
+### .env
+环境变量配置文件，可用于存储敏感信息（可选）。
+
+```bash
+cp .env.example .env
+# 编辑 .env 文件，填入实际的密钥
+```
+
+## 日志系统
+
+程序会自动记录运行日志到 `logs/` 目录：
+- `app_YYYYMMDD.log` - 完整日志（所有级别）
+- `error_YYYYMMDD.log` - 错误日志（仅错误和严重错误）
+
+调试模式下会在控制台输出详细日志。
+
+## 开发说明
+
+### 常量管理
+所有常量定义在 `core/constants.py` 中，便于统一管理和修改。
+
+### 日志使用
+```python
+from core.logger import get_logger
+
+logger = get_logger(__name__)
+logger.info("这是一条信息日志")
+logger.error("这是一条错误日志")
+```
+
+### 代码优化建议
+详细优化建议请查看 `OPTIMIZATION_TODO.md` 文件。
 
 ## 注意事项
 
@@ -103,6 +162,7 @@ TorchOverlay/
 - 首次使用建议先配置OCR密钥
 - 免费版OCR有每日调用次数限制
 - 确保游戏窗口可见且未最小化
+- 日志文件会自动归档，建议定期清理旧日志
 
 ## 许可证
 
