@@ -219,73 +219,17 @@ class AppController:
                 return balance
         return "--"
 
-    def on_balance_detect_click(self):
-        """单独的余额识别按钮（可选）"""
-        bound = self._binder.bound
-        if not bound:
-            self._ui.show_info("未绑定游戏窗口，无法识别。")
-            return
-
-        # 余额识别区域（使用配置）
-        balance_region = {
-            'x': self._cfg.balance_region.x,
-            'y': self._cfg.balance_region.y,
-            'width': self._cfg.balance_region.width,
-            'height': self._cfg.balance_region.height
-        }
-
-        if self._cfg.ocr.debug_mode:
-            print(f"\n[余额识别（单独）] 截图区域: x={balance_region['x']}, y={balance_region['y']}, width={balance_region['width']}, height={balance_region['height']}")
-
-        # 先保存完整client区域用于对比
-        full_client_path = os.path.join(os.getcwd(), "captures", "last_client_full.png")
-        full_cap = self._capture.capture_client_once(bound.hwnd, full_client_path, timeout_sec=2.5)
-
-        if self._cfg.ocr.debug_mode:
-            print(f"[余额识别（单独）] 完整client区域已保存到: {full_client_path}")
-
-        # 截取余额区域（不预处理，保持原有识别方式）
-        balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
-        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=False)
-
-        if not cap.ok or not cap.path:
-            self._ui.show_info(f"截图失败：{cap.error}")
-            return
-
-        if self._cfg.ocr.debug_mode:
-            print(f"[余额识别（单独）] 余额区域已保存到: {balance_out_path}")
-            # 尝试获取图片尺寸
-            try:
-                from PIL import Image
-                img = Image.open(cap.path)
-                print(f"[余额识别（单独）] 截图尺寸: {img.width}x{img.height}")
-            except Exception:
-                pass
-
-        r = self._ocr.recognize(cap.path)
-        if r.ok and r.text:
-            balance_value = self._extract_balance(r.text)
-            self._ui.update_balance(balance_value)
-
-            if self._cfg.ocr.debug_mode:
-                print(f"\n[余额识别（单独）] 原始识别: {repr(r.text)}")
-                print(f"[余额识别（单独）] 提取余额: {balance_value}")
-                if r.raw and 'words_result' in r.raw:
-                    print(f"[余额识别（单独）] OCR原始响应:")
-                    for idx, word in enumerate(r.raw['words_result'][:3]):
-                        print(f"    [{idx}] {word}")
-        else:
-            if self._cfg.ocr.debug_mode:
-                print(f"[余额识别（单独）] 识别失败: {r.error if r.error else '未识别到文字'}")
-                if r.raw:
-                    print(f"[余额识别（单独）] 原始响应: {r.raw}")
-            self._ui.show_info(f"余额识别失败: {r.error if r.error else '未识别到文字'}")
-
     def update_config(self, ocr_config, watch_interval_ms: int, balance_region=None) -> bool:
         """更新配置"""
         try:
             from core.config import AppConfig, OcrConfig
+            from core.config import BalanceRegionConfig
             from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
+
+            # 更新余额区域配置（如果提供了）
+            if balance_region:
+                if not balance_region.save():
+                    raise Exception("保存余额区域配置失败")
 
             # 更新配置对象
             self._cfg = AppConfig(
@@ -297,7 +241,7 @@ class AppController:
                 balance_region=balance_region if balance_region else self._cfg.balance_region,
             )
 
-            # 保存到文件
+            # 保存主配置文件（不包含 balance_region）
             if not self._cfg.save():
                 raise Exception("保存配置文件失败")
 

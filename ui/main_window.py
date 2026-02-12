@@ -39,23 +39,6 @@ class MainWindow:
         )
         self.btn_detect.place(x=0, y=0, width=175, height=30)
 
-        self.btn_balance = tk.Button(
-            button_frame,
-            text="识别余额",
-            font=("Segoe UI", 9),
-            state="disabled",
-            command=self._controller.on_balance_detect_click
-        )
-        self.btn_balance.place(x=185, y=0, width=175, height=30)
-
-        self.btn_settings = tk.Button(
-            self.root,
-            text="⚙ 设置",
-            font=("Segoe UI", 10),
-            command=self._open_settings
-        )
-        self.btn_settings.place(x=386, y=210, width=218, height=34)
-
         self.btn_settings = tk.Button(
             self.root,
             text="⚙ 设置",
@@ -76,14 +59,12 @@ class MainWindow:
             self.lbl_header.config(text=title)
             self.lbl_status.config(text=f"状态：已绑定\n窗口：{bound.title}\nPID：{bound.pid}")
             self.btn_detect.config(state="normal")
-            self.btn_balance.config(state="normal")
         else:
             title = f"{self._cfg.app_title_prefix}-未绑定"
             self.root.title(title)
             self.lbl_header.config(text=title)
             self.lbl_status.config(text="状态：未绑定")
             self.btn_detect.config(state="disabled")
-            self.btn_balance.config(state="disabled")
 
         self._check_ocr_config()
 
