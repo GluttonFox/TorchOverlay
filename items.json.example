@@ -1,0 +1,10 @@
+{
+  "item_r0_c0": { "x": 480,  "y": 240, "width": 220, "height": 280 },
+  "item_r0_c1": { "x": 720,  "y": 240, "width": 220, "height": 280 },
+  "item_r0_c2": { "x": 960,  "y": 240, "width": 220, "height": 280 },
+  "item_r0_c3": { "x": 1200, "y": 240, "width": 220, "height": 280 },
+  "item_r0_c4": { "x": 1440, "y": 240, "width": 220, "height": 280 },
+  "item_r0_c5": { "x": 1680, "y": 240, "width": 220, "height": 280 },
+  "item_r1_c0": { "x": 480,  "y": 560, "width": 220, "height": 280 },
+  "item_r1_c1": { "x": 720,  "y": 560, "width": 220, "height": 280 }
+}
