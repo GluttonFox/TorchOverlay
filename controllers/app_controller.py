@@ -1,15 +1,24 @@
+import os
+import time
+
 from core.config import AppConfig
 from services.game_binder import GameBinder
-from services.ocr.base_ocr import IOcrEngine
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
-import time
-import os
+from services.ocr.base_ocr import IOcrEngine
+
 
 class AppController:
     """控制器：业务流程与 UI 交互的中枢。"""
 
-    def __init__(self, cfg: AppConfig, binder: GameBinder, watcher: ProcessWatcher, capture: CaptureService, ocr: IOcrEngine):
+    def __init__(
+        self,
+        cfg: AppConfig,
+        binder: GameBinder,
+        watcher: ProcessWatcher,
+        capture: CaptureService,
+        ocr: IOcrEngine,
+    ):
         self._cfg = cfg
         self._binder = binder
         self._watcher = watcher
@@ -39,14 +48,12 @@ class AppController:
         def tick():
             bound = self._binder.bound
             if bound:
-                # 句柄失效或进程退出 -> 关闭程序
                 if not self._binder.is_bound_hwnd_valid():
                     self._ui.close()
                     return
                 if not self._watcher.is_alive(bound):
                     self._ui.close()
                     return
-
             self._ui.schedule(self._watcher.interval_ms, tick)
 
         self._ui.schedule(self._watcher.interval_ms, tick)
@@ -57,12 +64,15 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        out_path = os.path.join(os.getcwd(), "captures", "last_capture.png")
-        cap = self._capture.capture_window_once(bound.title, out_path, timeout_sec=2.5)
-        if not cap.ok:
+        # A：截 client 区域（用于OCR/Overlay对齐）
+        out_path = os.path.join(os.getcwd(), "captures", "last_client.png")
+        cap = self._capture.capture_client_once(bound.hwnd, out_path, timeout_sec=2.5)
+
+        if not cap.ok or not cap.path:
             self._ui.show_info(f"截图失败：{cap.error}")
             return
 
+        # 云OCR
         r = self._ocr.recognize(cap.path)
         if not r.ok:
             self._ui.show_info(f"OCR失败：{r.error}")
