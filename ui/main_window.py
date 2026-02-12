@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from core.config import AppConfig, OcrConfig
 from core.models import BoundGame
 from ui.settings_window import SettingsWindow
@@ -12,32 +12,49 @@ class MainWindow:
         self._controller = controller
 
         self.root = tk.Tk()
-        self.root.geometry("620x310")
+        self.root.geometry("620x450")
         self.root.resizable(False, False)
 
         self.lbl_header = tk.Label(self.root, text="", font=("Segoe UI", 12, "bold"), anchor="w")
         self.lbl_header.place(x=16, y=14, width=588, height=28)
 
-        self.lbl_status = tk.Label(self.root, text="", font=("Segoe UI", 10), anchor="w", justify="left")
-        self.lbl_status.place(x=16, y=52, width=588, height=60)
-
         # 余额显示区域
-        tk.Label(self.root, text="当前余额：", font=("Segoe UI", 12, "bold")).place(x=16, y=125)
+        tk.Label(self.root, text="当前余额：", font=("Segoe UI", 12, "bold")).place(x=16, y=55)
         self.lbl_balance = tk.Label(self.root, text="--", font=("Segoe UI", 16, "bold"), fg="#2ECC71")
-        self.lbl_balance.place(x=120, y=120, width=250, height=35)
+        self.lbl_balance.place(x=120, y=50, width=250, height=35)
+
+        # 物品识别结果表格
+        tk.Label(self.root, text="物品识别结果：", font=("Segoe UI", 12, "bold")).place(x=16, y=100)
+
+        # 创建表格
+        columns = ("index", "name", "quantity", "price")
+        self.tree = ttk.Treeview(self.root, columns=columns, show="headings", height=8)
+        self.tree.heading("index", text="序号")
+        self.tree.heading("name", text="物品名称")
+        self.tree.heading("quantity", text="数量")
+        self.tree.heading("price", text="价格")
+
+        self.tree.column("index", width=40, anchor="center", stretch=False)
+        self.tree.column("name", width=320, anchor="w", stretch=False)
+        self.tree.column("quantity", width=80, anchor="center", stretch=False)
+        self.tree.column("price", width=100, anchor="center", stretch=False)
+
+        self.tree.place(x=16, y=125, width=588, height=220)
+
+        # 添加滚动条
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.tree.yview)
+        scrollbar.place(x=600, y=125, width=20, height=220)
+        self.tree.configure(yscrollcommand=scrollbar.set)
 
         # 按钮区域
-        button_frame = tk.Frame(self.root)
-        button_frame.place(x=16, y=170, width=588, height=30)
-
         self.btn_detect = tk.Button(
-            button_frame,
+            self.root,
             text="识别物品",
             font=("Segoe UI", 9),
             state="disabled",
             command=self._controller.on_detect_click
         )
-        self.btn_detect.place(x=0, y=0, width=175, height=30)
+        self.btn_detect.place(x=16, y=360, width=175, height=30)
 
         self.btn_settings = tk.Button(
             self.root,
@@ -45,10 +62,7 @@ class MainWindow:
             font=("Segoe UI", 10),
             command=self._open_settings
         )
-        self.btn_settings.place(x=386, y=210, width=218, height=34)
-
-        self.lbl_info = tk.Label(self.root, text="提示：首次使用请点击「设置」配置OCR参数", font=("Segoe UI", 9), fg="gray")
-        self.lbl_info.place(x=16, y=255, width=588, height=20)
+        self.btn_settings.place(x=386, y=410, width=218, height=34)
 
         self.root.after(0, self._controller.on_window_shown)
 
@@ -57,13 +71,11 @@ class MainWindow:
             title = f"{self._cfg.app_title_prefix}-已绑定-{bound.title}"
             self.root.title(title)
             self.lbl_header.config(text=title)
-            self.lbl_status.config(text=f"状态：已绑定\n窗口：{bound.title}\nPID：{bound.pid}")
             self.btn_detect.config(state="normal")
         else:
             title = f"{self._cfg.app_title_prefix}-未绑定"
             self.root.title(title)
             self.lbl_header.config(text=title)
-            self.lbl_status.config(text="状态：未绑定")
             self.btn_detect.config(state="disabled")
 
         self._check_ocr_config()
@@ -71,8 +83,7 @@ class MainWindow:
     def _check_ocr_config(self):
         """检查OCR配置是否已设置"""
         if not self._cfg.ocr.api_key or not self._cfg.ocr.secret_key:
-            self.lbl_info.config(fg="orange")
-            self.lbl_info.config(text="⚠ 警告：未配置OCR参数，请点击「设置」按钮配置API Key和Secret Key")
+            pass  # 可以在这里添加UI提示
 
     def ask_bind_retry_or_exit(self) -> bool:
         return messagebox.askokcancel(
@@ -86,6 +97,15 @@ class MainWindow:
     def update_balance(self, balance: str):
         """更新余额显示"""
         self.lbl_balance.config(text=balance)
+
+    def clear_items_table(self):
+        """清空物品表格"""
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+    def add_item_result(self, index: int, region: str, name: str, quantity: str, price: str):
+        """添加物品识别结果到表格"""
+        self.tree.insert("", "end", values=(index, name, quantity, price))
 
     def schedule(self, delay_ms: int, fn):
         self.root.after(delay_ms, fn)
@@ -110,8 +130,6 @@ class MainWindow:
             if result:
                 # 更新UI中保存的配置引用
                 self._cfg = self._controller.get_config()
-                self.lbl_info.config(fg="gray")
-                self.lbl_info.config(text="提示：配置已保存，可以开始使用识别功能")
             return result
         except Exception as e:
             messagebox.showerror("错误", f"保存配置失败：{e}")

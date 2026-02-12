@@ -1,12 +1,14 @@
 import os
 import time
+from typing import Any
 
-from core.config import AppConfig
+from core.config import AppConfig, get_regions_for_resolution, get_combined_region
 from services.game_binder import GameBinder
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
 from services.ocr.base_ocr import IOcrEngine
 from services.overlay.overlay_service import OverlayService, OverlayTextItem
+from services.overlay.target_window import get_client_rect_in_screen
 
 
 class AppController:
@@ -70,94 +72,192 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        # 余额识别区域配置
-        balance_region = {
-            'x': self._cfg.regions.balance.x,
-            'y': self._cfg.regions.balance.y,
-            'width': self._cfg.regions.balance.width,
-            'height': self._cfg.regions.balance.height,
-            'name': '余额区域'
-        }
+        # 获取窗口client区域大小
+        client_x, client_y, client_width, client_height = get_client_rect_in_screen(bound.hwnd)
 
-        balance_value = "--"
+        # 根据分辨率自适应计算识别区域
+        balance_region, item_regions = get_regions_for_resolution(client_width, client_height)
+
+        # 计算包含所有区域的合并区域
+        combined_region = get_combined_region(balance_region, item_regions)
 
         if self._cfg.ocr.debug_mode:
-            print(f"\n[余额识别] 尝试区域 ({balance_region['name']}): x={balance_region['x']}, y={balance_region['y']}, width={balance_region['width']}, height={balance_region['height']}")
+            print(f"\n[OCR优化] 合并区域: x={combined_region['x']}, y={combined_region['y']}, width={combined_region['width']}, height={combined_region['height']}")
+            print(f"[OCR优化] 窗口分辨率: {client_width}x{client_height}")
+            print(f"[OCR优化] 包含区域: 余额区域({balance_region['name']}) + {len(item_regions)}个物品区域")
 
-        # 截取余额区域
-        balance_out_path = os.path.join(os.getcwd(), "captures/last_balance.png")
-        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=False)
+        # 截取合并区域（1次截图）
+        combined_out_path = os.path.join(os.getcwd(), "captures/last_combined.png")
+        cap = self._capture.capture_region_once(bound.hwnd, combined_out_path, combined_region, timeout_sec=2.5, preprocess=False)
 
-        if cap.ok and cap.path:
-            if self._cfg.ocr.debug_mode:
-                print(f"[余额识别] 截图已保存到: {balance_out_path}")
+        if not cap.ok or not cap.path:
+            self._ui.show_info("截图失败，无法识别。")
+            return
 
-            # 识别余额
-            r = self._ocr.recognize(cap.path)
-            if r.ok and r.text:
-                balance_value = self._extract_balance(r.text)
+        if self._cfg.ocr.debug_mode:
+            print(f"[OCR优化] 截图已保存到: {combined_out_path}")
 
-                if self._cfg.ocr.debug_mode:
-                    print(f"[余额识别] 原始识别: {repr(r.text)}")
-                    print(f"[余额识别] 提取余额: {balance_value}")
+        # OCR识别（1次调用）
+        r = self._ocr.recognize(cap.path)
+        if not r.ok:
+            self._ui.show_info(f"OCR识别失败: {r.error}")
+            return
 
-        # 更新UI
+        if self._cfg.ocr.debug_mode:
+            print(f"[OCR优化] 原始识别文本: {repr(r.text)}")
+            if r.words:
+                print(f"[OCR优化] 识别到 {len(r.words)} 个文字块")
+
+        # 根据位置信息分配结果
+        balance_value = "--"
+        item_results = []
+
+        if r.words:
+            # 遍历所有识别到的文字块
+            for word in r.words:
+                # 计算文字块在合并区域中的绝对位置
+                word_x = word.x + combined_region['x']
+                word_y = word.y + combined_region['y']
+
+                # 检查是否在余额区域内
+                if self._point_in_region(word_x, word_y, word.width, word.height, balance_region):
+                    balance_text = word.text
+                    balance_value = self._extract_balance(balance_text)
+
+                    if self._cfg.ocr.debug_mode:
+                        print(f"[OCR优化] 文字块归属余额: {repr(balance_text)} -> 余额: {balance_value}")
+                else:
+                    # 检查是否在某个物品区域内
+                    for item_idx, item_region in enumerate(item_regions):
+                        if self._point_in_region(word_x, word_y, word.width, word.height, item_region):
+                            # 收集该物品区域的所有文字块
+                            item_results.append({
+                                'index': item_idx,
+                                'text': word.text,
+                                'region_name': item_region['name']
+                            })
+
+                            if self._cfg.ocr.debug_mode:
+                                print(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region['name']}): {repr(word.text)}")
+                            break
+
+        # 更新UI余额
         self._ui.update_balance(balance_value)
 
         if self._cfg.ocr.debug_mode and balance_value == "--":
-            print(f"\n[余额识别] 识别失败，无法识别余额")
+            print(f"\n[OCR优化] 余额识别失败")
 
-        # 截 client 区域（用于OCR/Overlay对齐）
-        out_path = os.path.join(os.getcwd(), "captures", "last_client.png")
-        cap = self._capture.capture_client_once(bound.hwnd, out_path, timeout_sec=2.5)
+        # 清空表格
+        self._ui.clear_items_table()
 
-        if not cap.ok or not cap.path:
-            self._ui.show_info(f"截图失败：{cap.error}")
-            return
+        # 创建overlay显示区域边框
+        if not self._overlay.is_visible():
+            self._overlay.create_overlay(bound.hwnd)
 
-        # 云OCR
-        r = self._ocr.recognize(cap.path)
-        if not r.ok:
-            self._ui.show_info(f"OCR失败：{r.error}")
-            return
+        # 在overlay上显示物品识别区域边框
+        self._overlay.show_regions(item_regions)
 
-        # 显示识别文本和坐标信息
-        if r.text:
-            # 创建或更新overlay
-            if not self._overlay.is_visible():
-                self._overlay.create_overlay(bound.hwnd)
+        # 批量添加物品结果到表格
+        self._add_item_results_batch(item_results, item_regions)
 
-            # 转换OCR结果为overlay文本项
-            text_items = []
-            if r.words:
-                for word in r.words:
-                    text_item = OverlayTextItem(
-                        text=word.text,
-                        x=word.x,
-                        y=word.y,
-                        width=word.width,
-                        height=word.height,
-                        color="#00FF00",
-                        font_size=14,
-                    )
-                    text_items.append(text_item)
+    def _point_in_region(self, x: int, y: int, width: int, height: int, region: dict[str, Any]) -> bool:
+        """判断点/矩形是否在区域内
 
-                # 在overlay上显示文本
-                self._overlay.show_texts(text_items)
+        Args:
+            x: 文字块左上角x坐标
+            y: 文字块左上角y坐标
+            width: 文字块宽度
+            height: 文字块高度
+            region: 区域定义 {x, y, width, height}
 
-                # 在控制台输出坐标信息
-                if self._cfg.ocr.debug_mode:
-                    print("\n[Overlay] 识别到的文本及坐标信息:")
-                    for word in r.words:
-                        print(f"  文本: {word.text}")
-                        print(f"  位置: x={word.x}, y={word.y}, width={word.width}, height={word.height}")
-                        print(f"  边界: ({word.x}, {word.y}) - ({word.x + word.width}, {word.y + word.height})")
+        Returns:
+            是否在区域内
+        """
+        # 计算文字块的中心点
+        center_x = x + width / 2
+        center_y = y + height / 2
+
+        # 判断中心点是否在区域内
+        region_x = region['x']
+        region_y = region['y']
+        region_right = region_x + region['width']
+        region_bottom = region_y + region['height']
+
+        return (region_x <= center_x <= region_right and
+                region_y <= center_y <= region_bottom)
+
+    def _add_item_results_batch(self, item_results: list[dict], item_regions: list[dict[str, Any]]):
+        """批量添加物品识别结果到表格
+
+        Args:
+            item_results: 文字块结果列表 [{'index', 'text', 'region_name'}, ...]
+            item_regions: 物品区域列表
+        """
+        # 按区域索引分组文字块
+        grouped = {}
+        for result in item_results:
+            idx = result['index']
+            if idx not in grouped:
+                grouped[idx] = []
+            grouped[idx].append(result['text'])
+
+        # 为每个区域生成结果
+        for idx, region in enumerate(item_regions):
+            if idx in grouped:
+                # 合并该区域的所有文字块
+                combined_text = ' '.join(grouped[idx])
             else:
-                self._overlay.close()
-                self._ui.show_info(r.text)
+                combined_text = "--"
+
+            if self._cfg.ocr.debug_mode:
+                print(f"[物品识别] 区域 {idx + 1} ({region['name']}): 合并文本 = {repr(combined_text)}")
+
+            # 解析物品信息
+            item_name, item_quantity, item_price = self._parse_item_info(combined_text)
+            self._ui.add_item_result(idx + 1, region['name'], item_name, item_quantity, item_price)
+
+    def _parse_item_info(self, text: str) -> tuple[str, str, str]:
+        """解析物品信息，返回 (名称, 数量, 价格)"""
+        import re
+
+        if text == "--":
+            return "--", "--", "--"
+
+        # 将换行符替换为空格，并压缩连续空格
+        text = ' '.join(text.split())
+
+        # 去掉开头的 TUFF 或 STUFF 标记
+        text = re.sub(r'^(TUFF|STUFF)\s*', '', text, flags=re.IGNORECASE)
+
+        # 检查是否已售罄
+        if '已售罄' in text:
+            # 提取物品名称（已售罄之前的部分）
+            name = text.replace('已售罄', '').strip()
+            return name, '已售罄', '0'
+
+        # 查找 "X" 后面的数字作为数量（X20 或 X 20）
+        quantity_match = re.search(r'X\s*(\d+)', text, re.IGNORECASE)
+        if quantity_match:
+            quantity = quantity_match.group(1)
+            # 去掉数量部分，获取物品名称和价格
+            remaining = re.sub(r'X\s*\d+', '', text, flags=re.IGNORECASE).strip()
         else:
-            self._overlay.close()
-            self._ui.show_info("未识别到文字")
+            # 没有显式数量，默认为1
+            quantity = '1'
+            remaining = text
+
+        # 从剩余文本中提取最后一个数字作为价格
+        price_match = re.search(r'(\d+)\s*$', remaining)
+        if price_match:
+            price = price_match.group(1)
+            # 去掉价格，获取物品名称
+            name = re.sub(r'\d+\s*$', '', remaining).strip()
+        else:
+            # 没有找到价格
+            price = '--'
+            name = remaining.strip()
+
+        return name, quantity, price
 
     def _extract_balance(self, text: str) -> str:
         """从识别的文本中提取余额数字"""

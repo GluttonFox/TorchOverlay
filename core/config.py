@@ -3,130 +3,125 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
-@dataclass
-class BalanceRegionConfig:
-    """余额识别区域配置（内部配置，不在UI中展示）"""
-    x: int = 1735
-    y: int = 36
-    width: int = 100
-    height: int = 40
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'BalanceRegionConfig':
-        return cls(**data)
+def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[dict[str, int], list[dict[str, Any]]]:
+    """根据分辨率自适应计算识别区域
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    Args:
+        client_width: 窗口client区域宽度
+        client_height: 窗口client区域高度
 
-@dataclass
-class ItemGridConfig:
-    """物品识别区域网格配置"""
-    # 起始位置
-    start_x: int = 480
-    start_y: int = 240
+    Returns:
+        (balance_region, item_regions): 余额区域和物品区域列表
+    """
+    # 基准分辨率（1920x1080）
+    base_width = 1920
+    base_height = 1080
 
-    # 单个物品槽大小
-    width: int = 220
-    height: int = 280
+    # 计算缩放比例
+    scale_x = client_width / base_width
+    scale_y = client_height / base_height
 
-    # 间距
-    horizontal_spacing: int = 40  # 列间距
-    vertical_spacing: int = 40    # 行间距
+    # 基准余额区域坐标
+    base_balance = {
+        "x": 1735,
+        "y": 36,
+        "width": 100,
+        "height": 40,
+        "name": "余额区域"
+    }
 
-    # 网格大小
-    rows: int = 2  # 行数
-    cols: int = 6  # 列数（第1行6列，第2行2列）
+    # 基准物品区域网格参数
+    base_items = {
+        "start_x": 423,
+        "start_y": 157,
+        "width": 200,
+        "height": 200,
+        "horizontal_spacing": 10,
+        "vertical_spacing": 10,
+        "rows": 2,
+        "cols": 6
+    }
 
-    def get_region(self, row: int, col: int) -> dict[str, int] | None:
-        """获取指定行列的物品区域配置"""
-        # 检查行列是否有效
-        if row >= self.rows:
-            return None
+    # 缩放余额区域
+    balance_region = {
+        "x": int(base_balance["x"] * scale_x),
+        "y": int(base_balance["y"] * scale_y),
+        "width": int(base_balance["width"] * scale_x),
+        "height": int(base_balance["height"] * scale_y),
+        "name": base_balance["name"]
+    }
 
-        # 第1行有6列，第2行只有2列
-        if row == 1 and col >= 2:
-            return None
+    # 生成物品区域（第1行6列，第2行2列）
+    item_regions = []
+    for row in range(base_items["rows"]):
+        cols_in_row = 2 if row == 1 else 6
+        for col in range(cols_in_row):
+            x = int((base_items["start_x"] + col * (base_items["width"] + base_items["horizontal_spacing"])) * scale_x)
+            y = int((base_items["start_y"] + row * (base_items["height"] + base_items["vertical_spacing"])) * scale_y)
+            width = int(base_items["width"] * scale_x)
+            height = int(base_items["height"] * scale_y)
 
-        x = self.start_x + col * (self.width + self.horizontal_spacing)
-        y = self.start_y + row * (self.height + self.vertical_spacing)
+            item_regions.append({
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+                "name": f"item_r{row}_c{col}"
+            })
 
-        return {
-            "x": x,
-            "y": y,
-            "width": self.width,
-            "height": self.height,
-            "name": f"item_r{row}_c{col}"
-        }
+    return balance_region, item_regions
 
-    def get_all_regions(self) -> list[dict[str, Any]]:
-        """获取所有物品区域"""
-        regions = []
-        for row in range(self.rows):
-            # 第1行有6列，第2行只有2列
-            cols_in_row = 2 if row == 1 else 6
-            for col in range(cols_in_row):
-                region = self.get_region(row, col)
-                if region:
-                    regions.append(region)
-        return regions
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ItemGridConfig':
-        return cls(**data)
+def get_combined_item_region(item_regions: list[dict[str, Any]]) -> dict[str, Any]:
+    """计算包含所有物品区域的最小边界框
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    Args:
+        item_regions: 物品区域列表
 
-@dataclass
-class RegionsConfig:
-    """区域配置集合（包含余额和物品区域）"""
-    balance: BalanceRegionConfig = field(default_factory=BalanceRegionConfig)
-    items: ItemGridConfig = field(default_factory=ItemGridConfig)
+    Returns:
+        包含所有区域的边界框 {x, y, width, height}
+    """
+    if not item_regions:
+        return {"x": 0, "y": 0, "width": 0, "height": 0}
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'RegionsConfig':
-        balance_data = data.get('balance', {})
-        items_data = data.get('items', {})
+    min_x = min(r['x'] for r in item_regions)
+    min_y = min(r['y'] for r in item_regions)
+    max_x = max(r['x'] + r['width'] for r in item_regions)
+    max_y = max(r['y'] + r['height'] for r in item_regions)
 
-        return cls(
-            balance=BalanceRegionConfig(**balance_data),
-            items=ItemGridConfig(**items_data)
-        )
+    return {
+        "x": min_x,
+        "y": min_y,
+        "width": max_x - min_x,
+        "height": max_y - min_y
+    }
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            'balance': self.balance.to_dict(),
-            'items': self.items.to_dict()
-        }
 
-    @staticmethod
-    def get_config_path() -> str:
-        """获取区域配置文件路径"""
-        return os.path.join(os.getcwd(), "range.json")
+def get_combined_region(balance_region: dict[str, Any], item_regions: list[dict[str, Any]]) -> dict[str, Any]:
+    """计算包含余额和所有物品区域的最小边界框
 
-    @classmethod
-    def load(cls) -> 'RegionsConfig':
-        """从 range.json 加载配置"""
-        config_path = cls.get_config_path()
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                return cls.from_dict(data)
-            except Exception as e:
-                print(f"加载区域配置文件失败: {e}")
-        return cls()
+    Args:
+        balance_region: 余额区域
+        item_regions: 物品区域列表
 
-    def save(self) -> bool:
-        """保存配置到 range.json"""
-        try:
-            config_path = self.get_config_path()
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(self.to_dict(), f, indent=4, ensure_ascii=False)
-            return True
-        except Exception as e:
-            print(f"保存区域配置文件失败: {e}")
-            return False
+    Returns:
+        包含所有区域的边界框 {x, y, width, height}
+    """
+    all_regions = [balance_region] + item_regions
+
+    min_x = min(r['x'] for r in all_regions)
+    min_y = min(r['y'] for r in all_regions)
+    max_x = max(r['x'] + r['width'] for r in all_regions)
+    max_y = max(r['y'] + r['height'] for r in all_regions)
+
+    return {
+        "x": min_x,
+        "y": min_y,
+        "width": max_x - min_x,
+        "height": max_y - min_y
+    }
+
 
 @dataclass
 class OcrConfig:
@@ -144,6 +139,7 @@ class OcrConfig:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+
 @dataclass(frozen=True)
 class AppConfig:
     app_title_prefix: str = "Torch"
@@ -151,7 +147,6 @@ class AppConfig:
     watch_interval_ms: int = 500
     elevated_marker: str = "--elevated"
     ocr: OcrConfig = field(default_factory=OcrConfig)
-    regions: RegionsConfig = field(default_factory=RegionsConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':

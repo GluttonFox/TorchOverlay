@@ -26,6 +26,7 @@ class OverlayService:
         self._canvas: tk.Canvas | None = None
         self._target_hwnd: int | None = None
         self._text_items: list[Any] = []
+        self._regions: list[dict[str, Any]] = []
         self._visible = False
         self._overlay_hwnd: int | None = None  # overlay窗口的句柄
 
@@ -133,7 +134,7 @@ class OverlayService:
         if self._canvas is None:
             return
 
-        # 清除现有文本
+        # 清除现有内容
         self._canvas.delete("all")
         self._text_items = text_items.copy()
 
@@ -142,6 +143,53 @@ class OverlayService:
             self._draw_text_item(item)
 
         self._visible = True
+
+    def show_regions(self, regions: list[dict[str, Any]]):
+        """在覆盖层上显示区域边框（用于测试）"""
+        if self._canvas is None:
+            return
+
+        # 清除现有内容
+        self._canvas.delete("all")
+        self._regions = regions.copy()
+
+        # 绘制每个区域边框
+        for region in regions:
+            self._draw_region(region)
+
+        self._visible = True
+
+    def _draw_region(self, region: dict[str, Any]):
+        """绘制单个区域边框"""
+        if self._canvas is None:
+            return
+
+        x = region['x']
+        y = region['y']
+        width = region['width']
+        height = region['height']
+        name = region.get('name', '')
+
+        # 绘制边框（红色）
+        self._canvas.create_rectangle(
+            x,
+            y,
+            x + width,
+            y + height,
+            outline="#FF0000",  # 红色边框
+            width=2,
+        )
+
+        # 绘制区域名称（在边框上方）
+        if name:
+            self._canvas.create_text(
+                x,
+                y - 12,
+                text=name,
+                fill="#FF0000",
+                font=("Arial", 10, "bold"),
+                anchor="nw",
+            )
 
     def _draw_text_item(self, item: OverlayTextItem):
         """绘制单个文本项"""
@@ -184,11 +232,18 @@ class OverlayService:
         )
 
     def _redraw_texts(self):
-        """重新绘制所有文本"""
+        """重新绘制所有内容"""
         if self._canvas is None:
             return
 
         self._canvas.delete("all")
+
+        # 先绘制区域边框（如果有）
+        if self._regions:
+            for region in self._regions:
+                self._draw_region(region)
+
+        # 再绘制文本（如果有）
         for item in self._text_items:
             self._draw_text_item(item)
 
@@ -197,6 +252,7 @@ class OverlayService:
         if self._canvas is not None:
             self._canvas.delete("all")
         self._text_items = []
+        self._regions = []
 
     def close(self):
         """关闭覆盖层"""
