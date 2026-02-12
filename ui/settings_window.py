@@ -26,6 +26,16 @@ class SettingsWindow:
         self.window.geometry(f"+{x}+{y}")
 
     def _setup_ui(self):
+        # API类型映射：中文显示值 -> 实际API名称
+        self._api_name_mapping = {
+            '通用标准识别（快速、经济）': 'general_basic',
+            '高精度带坐标（推荐用于游戏）': 'accurate',
+            '高精度基础（不带坐标）': 'accurate_basic',
+            '通用版（支持更多场景）': 'general',
+            '通用增强版（功能更强）': 'general_enhanced',
+            '网络图片识别（针对网络图片优化）': 'webimage',
+        }
+
         # OCR设置分组
         ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
         ocr_frame.place(x=20, y=20, width=610, height=300)
@@ -44,14 +54,7 @@ class SettingsWindow:
         ttk.Label(ocr_frame, text="API 类型:").place(x=10, y=70)
         self.api_name_var = tk.StringVar()
         api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=40, state="readonly")
-        api_name_combo['values'] = (
-            'general_basic',        # 通用标准识别
-            'accurate',             # 高精度带坐标
-            'accurate_basic',       # 高精度基础
-            'general',              # 通用版
-            'general_enhanced',     # 通用增强版
-            'webimage',             # 网络图片
-        )
+        api_name_combo['values'] = tuple(self._api_name_mapping.keys())
         api_name_combo.place(x=80, y=70)
 
         # 超时时间
@@ -69,13 +72,7 @@ class SettingsWindow:
         ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).place(x=10, y=160)
 
         # 说明
-        info_text = """说明:
-• general_basic: 通用标准识别（快速、经济）
-• accurate: 高精度带坐标（推荐用于游戏）
-• accurate_basic: 高精度基础（不带坐标）
-• general: 通用版（支持更多场景）
-• general_enhanced: 通用增强版（功能更强）
-• webimage: 网络图片识别（针对网络图片优化）"""
+        info_text = "说明: 推荐使用「高精度带坐标」或「通用标准识别」"
 
         info_label = ttk.Label(
             ocr_frame,
@@ -106,11 +103,28 @@ class SettingsWindow:
         """加载当前配置到界面"""
         self.api_key_var.set(self._cfg.ocr.api_key)
         self.secret_key_var.set(self._cfg.ocr.secret_key)
-        self.api_name_var.set(self._cfg.ocr.api_name)
+
+        # 将API名称转换为中文显示
+        api_name = self._cfg.ocr.api_name
+        chinese_name = self._get_chinese_name_for_api(api_name)
+        self.api_name_var.set(chinese_name)
+
         self.timeout_var.set(self._cfg.ocr.timeout_sec)
         self.retries_var.set(self._cfg.ocr.max_retries)
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
+
+    def _get_chinese_name_for_api(self, api_name: str) -> str:
+        """根据API名称获取中文显示值"""
+        for chinese, api in self._api_name_mapping.items():
+            if api == api_name:
+                return chinese
+        # 如果找不到，返回默认值
+        return '通用标准识别（快速、经济）'
+
+    def _get_api_name_from_chinese(self, chinese_name: str) -> str:
+        """根据中文显示值获取API名称"""
+        return self._api_name_mapping.get(chinese_name, 'general_basic')
 
     def _save_settings(self):
         """保存设置"""
@@ -121,11 +135,15 @@ class SettingsWindow:
             messagebox.showwarning("警告", "API Key 和 Secret Key 不能为空！")
             return
 
+        # 将中文显示值转换为实际API名称
+        chinese_api_name = self.api_name_var.get()
+        api_name = self._get_api_name_from_chinese(chinese_api_name)
+
         # 创建新的配置对象
         ocr_config = OcrConfig(
             api_key=api_key,
             secret_key=secret_key,
-            api_name=self.api_name_var.get(),
+            api_name=api_name,
             timeout_sec=self.timeout_var.get(),
             max_retries=self.retries_var.get(),
             debug_mode=self.debug_var.get(),
