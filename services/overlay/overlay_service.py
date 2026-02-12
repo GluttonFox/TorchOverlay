@@ -16,7 +16,7 @@ class OverlayTextItem:
     height: int
     color: str = "#00FF00"  # 默认绿色
     font_size: int = 12
-    background: str = "#000000"  # 背景色（半透明黑色）
+    background: str = ""  # 背景色（空字符串表示透明）
 
 
 class OverlayService(IOverlayService):
@@ -46,39 +46,31 @@ class OverlayService(IOverlayService):
         self._window.title("OCR Overlay")
         self._window.geometry(f"{width}x{height}+{x}+{y}")
         self._window.overrideredirect(True)  # 无边框窗口
-        self._window.attributes("-alpha", 0.9)  # 设置窗口透明度（0.9 = 90%不透明）
-        # 不使用 -topmost，而是设置为游戏窗口的子窗口
+        self._window.attributes("-alpha", 0.8)  # 设置窗口透明度（0.8 = 80%不透明）
+        self._window.attributes("-topmost", True)  # 设置为顶层窗口
 
         # 获取overlay窗口的句柄
         import win32gui
+        import win32con
         self._overlay_hwnd = int(self._window.winfo_id())
 
-        # 设置overlay窗口为游戏窗口的子窗口
+        # 设置overlay窗口为游戏窗口的子窗口，确保跟随游戏窗口
         try:
             win32gui.SetParent(self._overlay_hwnd, target_hwnd)
         except Exception:
             pass  # 如果设置失败，继续执行
 
-        # 创建画布（使用透明效果）
-        try:
-            # 尝试创建透明画布
-            self._canvas = tk.Canvas(
-                self._window,
-                width=width,
-                height=height,
-                highlightthickness=0,
-            )
-            self._window.attributes("-transparentcolor", "white")
-            self._canvas.config(bg="white")
-        except Exception:
-            # 如果透明失败，使用默认背景
-            self._canvas = tk.Canvas(
-                self._window,
-                width=width,
-                height=height,
-                bg="#000000",
-                highlightthickness=0,
-            )
+        # 设置透明色（将灰色设为透明）
+        self._window.attributes("-transparentcolor", "#CCCCCC")
+
+        # 创建画布，使用灰色背景（会被透明化）
+        self._canvas = tk.Canvas(
+            self._window,
+            width=width,
+            height=height,
+            highlightthickness=0,
+            bg="#CCCCCC"  # 灰色背景会被透明化
+        )
         self._canvas.pack(fill=tk.BOTH, expand=True)
 
         # 绑定窗口位置同步和可见性检查
@@ -101,16 +93,11 @@ class OverlayService(IOverlayService):
             foreground_hwnd = win32gui.GetForegroundWindow()
             target_is_foreground = (foreground_hwnd == self._target_hwnd)
 
-            # 如果目标窗口不在前台，隐藏overlay
-            if not target_is_foreground and self._visible:
-                self._window.withdraw()
-            # 如果目标窗口在前台且overlay可见，显示overlay
-            elif target_is_foreground and self._visible:
+            # 只在目标窗口在前台时显示overlay
+            if target_is_foreground and self._visible:
                 self._window.deiconify()
-                self._window.lift()  # 确保overlay在游戏窗口之上
-                # 确保overlay在最顶层
-                self._window.attributes("-topmost", True)
-                self._window.after(50, lambda: self._window.attributes("-topmost", False))
+            else:
+                self._window.withdraw()
 
             # 获取新的client区域位置
             x, y, width, height = get_client_rect_in_screen(self._target_hwnd)
@@ -120,7 +107,7 @@ class OverlayService(IOverlayService):
             self._canvas.config(width=width, height=height)
 
             # 重新绘制文本
-            if self._text_items:
+            if self._text_items and target_is_foreground:
                 self._redraw_texts()
 
         except Exception:
@@ -197,39 +184,18 @@ class OverlayService(IOverlayService):
         if self._canvas is None:
             return
 
-        # 计算文本框大小
-        text_width = len(item.text) * item.font_size * 0.6  # 估算宽度
-        text_height = item.font_size + 4
+        # 计算文本的水平居中位置
+        center_x = item.x + item.width // 2
 
-        # 绘制背景（半透明效果需要用stipple模拟）
-        self._canvas.create_rectangle(
-            item.x,
-            item.y,
-            item.x + max(item.width, int(text_width)),
-            item.y + max(item.height, text_height),
-            fill=item.background,
-            outline=item.color,
-            stipple="gray50",  # 半透明效果
-        )
-
-        # 绘制文本
+        # 绘制文本（居中靠上），使用stipple避免底色问题
         self._canvas.create_text(
-            item.x + 5,
-            item.y + 5,
+            center_x,
+            item.y + 10,
             text=item.text,
             fill=item.color,
             font=("Arial", item.font_size, "bold"),
-            anchor="nw",
-        )
-
-        # 绘制边框
-        self._canvas.create_rectangle(
-            item.x,
-            item.y,
-            item.x + item.width,
-            item.y + item.height,
-            outline="#FFFF00",  # 黄色边框标记原始识别区域
-            width=2,
+            anchor="n",
+            justify="center"
         )
 
     def _redraw_texts(self):

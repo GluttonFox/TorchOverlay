@@ -32,12 +32,7 @@ class SettingsWindow:
     def _setup_ui(self):
         # API类型映射：中文显示值 -> 实际API名称
         self._api_name_mapping = {
-            '通用标准识别（快速、经济）': 'general_basic',
-            '高精度带坐标（推荐用于游戏）': 'accurate',
-            '高精度基础（不带坐标）': 'accurate_basic',
-            '通用版（支持更多场景）': 'general',
-            '通用增强版（功能更强）': 'general_enhanced',
-            '网络图片识别（针对网络图片优化）': 'webimage',
+            '百度-高精度带坐标': 'accurate',
         }
 
         # OCR设置分组
@@ -76,7 +71,7 @@ class SettingsWindow:
         ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).place(x=10, y=160)
 
         # 说明
-        info_text = "说明: 推荐使用「高精度带坐标」或「通用标准识别」"
+        info_text = "说明: 使用「百度-高精度带坐标」获得最佳识别效果"
 
         info_label = ttk.Label(
             ocr_frame,
@@ -166,11 +161,11 @@ class SettingsWindow:
             if api == api_name:
                 return chinese
         # 如果找不到，返回默认值
-        return '通用标准识别（快速、经济）'
+        return '百度-高精度带坐标'
 
     def _get_api_name_from_chinese(self, chinese_name: str) -> str:
         """根据中文显示值获取API名称"""
-        return self._api_name_mapping.get(chinese_name, 'general_basic')
+        return self._api_name_mapping.get(chinese_name, 'accurate')
 
     def _save_settings(self):
         """保存设置"""

@@ -15,7 +15,7 @@ class MainWindow:
         self._controller = controller
 
         self.root = tk.Tk()
-        self.root.geometry("620x450")
+        self.root.geometry("620x200")
         self.root.resizable(False, False)
 
         self.lbl_header = tk.Label(self.root, text="", font=("Segoe UI", 12, "bold"), anchor="w")
@@ -35,9 +35,6 @@ class MainWindow:
         )
         self.lbl_source_price.place(x=380, y=58, width=220, height=20)
 
-        # 物品识别结果表格
-        tk.Label(self.root, text="物品识别结果：", font=("Segoe UI", 12, "bold")).place(x=16, y=100)
-
         # 更新物价按钮和时间显示
         self.btn_update_price = tk.Button(
             self.root,
@@ -45,7 +42,7 @@ class MainWindow:
             font=("Segoe UI", 9),
             command=self._controller.on_update_price_click
         )
-        self.btn_update_price.place(x=300, y=100, width=80, height=24)
+        self.btn_update_price.place(x=300, y=95, width=80, height=24)
 
         self.lbl_last_update = tk.Label(
             self.root,
@@ -53,39 +50,13 @@ class MainWindow:
             font=("Segoe UI", 9),
             fg="#666666"
         )
-        self.lbl_last_update.place(x=390, y=102, width=180, height=20)
+        self.lbl_last_update.place(x=390, y=97, width=180, height=20)
 
         # 从config.json加载上次更新时间
         self._load_last_update_time()
 
         # 加载初火源质价格
         self._load_source_price()
-
-        # 创建表格
-        columns = ("index", "name", "quantity", "price", "original_price", "converted_price", "profit_ratio")
-        self.tree = ttk.Treeview(self.root, columns=columns, show="headings", height=8)
-        self.tree.heading("index", text="序号")
-        self.tree.heading("name", text="物品名称")
-        self.tree.heading("quantity", text="物品数量")
-        self.tree.heading("price", text="辉石数量")
-        self.tree.heading("original_price", text="原始价格")
-        self.tree.heading("converted_price", text="转换价格")
-        self.tree.heading("profit_ratio", text="盈亏量")
-
-        self.tree.column("index", width=40, anchor="center", stretch=False)
-        self.tree.column("name", width=200, anchor="w", stretch=False)
-        self.tree.column("quantity", width=80, anchor="center", stretch=False)
-        self.tree.column("price", width=80, anchor="center", stretch=False)
-        self.tree.column("original_price", width=80, anchor="center", stretch=False)
-        self.tree.column("converted_price", width=80, anchor="center", stretch=False)
-        self.tree.column("profit_ratio", width=80, anchor="center", stretch=False)
-
-        self.tree.place(x=16, y=125, width=588, height=220)
-
-        # 添加滚动条
-        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.tree.yview)
-        scrollbar.place(x=600, y=125, width=20, height=220)
-        self.tree.configure(yscrollcommand=scrollbar.set)
 
         # 按钮区域
         self.btn_detect = tk.Button(
@@ -95,7 +66,7 @@ class MainWindow:
             state="disabled",
             command=self._controller.on_detect_click
         )
-        self.btn_detect.place(x=16, y=360, width=175, height=30)
+        self.btn_detect.place(x=16, y=140, width=175, height=30)
 
         self.btn_settings = tk.Button(
             self.root,
@@ -103,7 +74,7 @@ class MainWindow:
             font=("Segoe UI", 10),
             command=self._open_settings
         )
-        self.btn_settings.place(x=386, y=410, width=218, height=34)
+        self.btn_settings.place(x=386, y=140, width=218, height=34)
 
         self.root.after(0, self._controller.on_window_shown)
 
@@ -205,29 +176,6 @@ class MainWindow:
         except Exception as e:
             print(f"更新初火源质价格失败: {e}")
             self.lbl_source_price.config(text="初火源质:神威辉石 1:--")
-
-    def clear_items_table(self):
-        """清空物品表格"""
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-    def add_item_result(self, index: int, region: str, name: str, quantity: str, price: str,
-                       original_price: str = "--", converted_price: str = "--", profit_ratio: str = "--"):
-        """添加物品识别结果到表格"""
-        # 根据盈亏量的值添加特殊符号
-        if profit_ratio != "--":
-            try:
-                profit_value = float(profit_ratio)
-                if profit_value > 0:
-                    profit_ratio = f"↑{profit_ratio:.2f}"
-                elif profit_value < 0:
-                    profit_ratio = f"↓{profit_ratio:.2f}"
-                else:
-                    profit_ratio = f"→{profit_ratio:.2f}"
-            except ValueError:
-                pass
-
-        self.tree.insert("", "end", values=(index, name, quantity, price, original_price, converted_price, profit_ratio))
 
     def schedule(self, delay_ms: int, fn):
         self.root.after(delay_ms, fn)

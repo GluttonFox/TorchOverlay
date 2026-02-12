@@ -28,6 +28,15 @@ class IOverlayService(ABC):
         pass
 
     @abstractmethod
+    def show_texts(self, text_items: list[Any]) -> None:
+        """在覆盖层上显示文本
+
+        Args:
+            text_items: 文本项列表
+        """
+        pass
+
+    @abstractmethod
     def clear(self) -> None:
         """清空Overlay"""
         pass
