@@ -2,13 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-
-class CaptureResult:
-    """截图结果"""
-    def __init__(self, ok: bool, path: str | None = None, error: str | None = None):
-        self.ok = ok
-        self.path = path
-        self.error = error
+from domain.models.capture_result import CaptureResult
 
 
 class ICaptureService(ABC):
