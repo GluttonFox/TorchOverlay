@@ -86,13 +86,17 @@ class MainWindow:
 
     def _open_settings(self):
         """打开设置窗口"""
-        SettingsWindow(self.root, self._cfg, self._save_config_callback)
+        # 每次打开前从controller获取最新配置
+        latest_cfg = self._controller.get_config()
+        SettingsWindow(self.root, latest_cfg, self._save_config_callback)
 
     def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int) -> bool:
         """保存配置回调"""
         try:
             result = self._controller.update_config(ocr_config, watch_interval_ms)
             if result:
+                # 更新UI中保存的配置引用
+                self._cfg = self._controller.get_config()
                 self.lbl_info.config(fg="gray")
                 self.lbl_info.config(text="提示：配置已保存，可以开始使用识别功能")
             return result

@@ -96,3 +96,7 @@ class AppController:
         except Exception as e:
             print(f"更新配置失败: {e}")
             return False
+
+    def get_config(self):
+        """获取当前配置"""
+        return self._cfg
