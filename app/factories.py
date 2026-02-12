@@ -13,7 +13,7 @@ class AppFactory:
     """集中装配依赖：后续加截图/云OCR只需在这里注入。"""
 
     def __init__(self):
-        self._cfg = AppConfig()
+        self._cfg = AppConfig.load()
 
     def create_config(self) -> AppConfig:
         return self._cfg

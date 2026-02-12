@@ -45,3 +45,6 @@ captures/*.bmp
 
 # Environment variables
 .env
+
+# Config file (contains sensitive API keys)
+config.json

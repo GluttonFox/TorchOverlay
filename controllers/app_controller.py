@@ -84,14 +84,24 @@ class AppController:
         """更新配置"""
         try:
             from core.config import AppConfig, OcrConfig
-            self._cfg = AppConfig(
+
+            # 创建新的配置对象
+            new_cfg = AppConfig(
                 app_title_prefix=self._cfg.app_title_prefix,
                 keywords=self._cfg.keywords,
                 watch_interval_ms=watch_interval_ms,
                 elevated_marker=self._cfg.elevated_marker,
                 ocr=ocr_config,
             )
+
+            # 保存到文件
+            if not new_cfg.save():
+                raise Exception("保存配置文件失败")
+
+            # 更新内存中的配置
+            self._cfg = new_cfg
             self._watcher.interval_ms = watch_interval_ms
+
             return True
         except Exception as e:
             print(f"更新配置失败: {e}")
