@@ -102,9 +102,13 @@ class OverlayService:
             # 如果目标窗口不在前台，隐藏overlay
             if not target_is_foreground and self._visible:
                 self._window.withdraw()
-            # 如果目标窗口在前台，显示overlay
+            # 如果目标窗口在前台且overlay可见，显示overlay
             elif target_is_foreground and self._visible:
                 self._window.deiconify()
+                self._window.lift()  # 确保overlay在游戏窗口之上
+                # 确保overlay在最顶层
+                self._window.attributes("-topmost", True)
+                self._window.after(50, lambda: self._window.attributes("-topmost", False))
 
             # 获取新的client区域位置
             x, y, width, height = get_client_rect_in_screen(self._target_hwnd)
