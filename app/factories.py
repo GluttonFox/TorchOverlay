@@ -42,13 +42,6 @@ class AppFactory:
     def create_capture_service(self) -> CaptureService:
         return CaptureService()
 
-    def create_controller(self) -> AppController:
-        binder = self.create_game_binder()
-        watcher = self.create_process_watcher()
-        capture = self.create_capture_service()
-        ocr = self.create_ocr_engine()
-        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr)
-
     def create_ocr_engine(self):
         cfg = BaiduOcrConfig(
             api_key=self._cfg.ocr.api_key,
@@ -58,6 +51,10 @@ class AppFactory:
             max_retries=self._cfg.ocr.max_retries,
         )
         return BaiduOcrEngine(cfg)
+
+    def recreate_ocr_engine(self):
+        """重新创建OCR引擎（用于配置更新后）"""
+        return self.create_ocr_engine()
 
 
 

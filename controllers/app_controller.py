@@ -84,6 +84,9 @@ class AppController:
         """更新配置"""
         try:
             from core.config import AppConfig, OcrConfig
+            from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
+
+            # 更新配置对象
             self._cfg = AppConfig(
                 app_title_prefix=self._cfg.app_title_prefix,
                 keywords=self._cfg.keywords,
@@ -91,7 +94,20 @@ class AppController:
                 elevated_marker=self._cfg.elevated_marker,
                 ocr=ocr_config,
             )
+
+            # 更新监控间隔
             self._watcher.interval_ms = watch_interval_ms
+
+            # 重新创建OCR引擎（重要：确保新配置生效）
+            ocr_cfg = BaiduOcrConfig(
+                api_key=ocr_config.api_key,
+                secret_key=ocr_config.secret_key,
+                api_name=ocr_config.api_name,
+                timeout_sec=ocr_config.timeout_sec,
+                max_retries=ocr_config.max_retries,
+            )
+            self._ocr = BaiduOcrEngine(ocr_cfg)
+
             return True
         except Exception as e:
             print(f"更新配置失败: {e}")
