@@ -44,21 +44,28 @@ class OverlayService:
         self._window.geometry(f"{width}x{height}+{x}+{y}")
         self._window.overrideredirect(True)  # 无边框窗口
         self._window.attributes("-topmost", True)  # 置顶
+        self._window.attributes("-alpha", 0.9)  # 设置窗口透明度（0.9 = 90%不透明）
 
-        # 设置窗口透明度（可选）
+        # 创建画布（使用透明效果）
         try:
-            self._window.attributes("-transparentcolor", "")
+            # 尝试创建透明画布
+            self._canvas = tk.Canvas(
+                self._window,
+                width=width,
+                height=height,
+                highlightthickness=0,
+            )
+            self._window.attributes("-transparentcolor", "white")
+            self._canvas.config(bg="white")
         except Exception:
-            pass
-
-        # 创建画布
-        self._canvas = tk.Canvas(
-            self._window,
-            width=width,
-            height=height,
-            bg="",
-            highlightthickness=0,
-        )
+            # 如果透明失败，使用默认背景
+            self._canvas = tk.Canvas(
+                self._window,
+                width=width,
+                height=height,
+                bg="#000000",
+                highlightthickness=0,
+            )
         self._canvas.pack(fill=tk.BOTH, expand=True)
 
         # 绑定窗口位置同步（当目标窗口移动时，覆盖层也跟着移动）
