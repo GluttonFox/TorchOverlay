@@ -2,7 +2,7 @@ import os
 import threading
 from dataclasses import dataclass
 
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 import win32gui
 
 from services.overlay.target_window import get_client_rect_in_screen
@@ -78,51 +78,6 @@ class CaptureService:
 
         return result
 
-    def capture_region_once(
-        self,
-        target_hwnd: int,
-        out_path: str,
-        region: dict,
-        timeout_sec: float = 2.5,
-    ) -> CaptureResult:
-        """
-        截取client区域中的指定区域
-        region格式: {'x': int, 'y': int, 'width': int, 'height': int}
-        """
-        if not target_hwnd or not win32gui.IsWindow(target_hwnd):
-            return CaptureResult(ok=False, error="无效的目标窗口句柄(hwnd)")
-
-        out_path = os.path.abspath(out_path)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
-        # 先截取整个client区域
-        tmp_full = out_path + ".tmp_full.png"
-        full_cap = self.capture_client_once(target_hwnd, tmp_full, timeout_sec=timeout_sec)
-        if not full_cap.ok or not full_cap.path:
-            return full_cap
-
-        try:
-            # 裁剪出指定区域
-            im = Image.open(tmp_full).convert("RGBA")
-            cropped = im.crop((
-                region['x'],
-                region['y'],
-                region['x'] + region['width'],
-                region['y'] + region['height']
-            ))
-            cropped.save(out_path)
-
-            # 清理临时文件
-            try:
-                os.remove(tmp_full)
-            except Exception:
-                pass
-
-            return CaptureResult(ok=True, path=out_path)
-
-        except Exception as e:
-            return CaptureResult(ok=False, error=f"裁剪区域失败：{e}")
-
     def capture_client_once(
         self,
         target_hwnd: int,
@@ -173,3 +128,97 @@ class CaptureService:
 
         except Exception as e:
             return CaptureResult(ok=False, error=f"裁剪 client 失败：{e}")
+
+    @staticmethod
+    def _preprocess_image(image_path: str, output_path: str) -> str:
+        """
+        预处理图片以提高OCR识别准确率
+        1. 放大图片
+        2. 增强对比度
+        3. 增强锐度
+        """
+        try:
+            img = Image.open(image_path).convert('RGB')
+
+            # 放大图片 - 提高小文字的识别率
+            scale_factor = 3  # 放大3倍
+            new_size = (int(img.width * scale_factor), int(img.height * scale_factor))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+            # 增强对比度 - 使文字更清晰
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(2.0)  # 对比度增强2倍
+
+            # 增强锐度 - 使文字边缘更清晰
+            enhancer = ImageEnhance.Sharpness(img)
+            img = enhancer.enhance(2.0)  # 锐度增强2倍
+
+            # 保存预处理后的图片
+            img.save(output_path, quality=95)
+            return output_path
+
+        except Exception as e:
+            print(f"[CaptureService] 图片预处理失败: {e}")
+            # 如果预处理失败，返回原始图片路径
+            return image_path
+
+    def capture_region_once(
+        self,
+        target_hwnd: int,
+        out_path: str,
+        region: dict,
+        timeout_sec: float = 2.5,
+        preprocess: bool = True,  # 是否预处理图片
+    ) -> CaptureResult:
+        """
+        截取client区域中的指定区域
+        region格式: {'x': int, 'y': int, 'width': int, 'height': int}
+        preprocess: 是否预处理图片以提高识别准确率
+        """
+        if not target_hwnd or not win32gui.IsWindow(target_hwnd):
+            return CaptureResult(ok=False, error="无效的目标窗口句柄(hwnd)")
+
+        out_path = os.path.abspath(out_path)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        # 先截取整个client区域
+        tmp_full = out_path + ".tmp_full.png"
+        full_cap = self.capture_client_once(target_hwnd, tmp_full, timeout_sec=timeout_sec)
+        if not full_cap.ok or not full_cap.path:
+            return full_cap
+
+        try:
+            # 裁剪出指定区域
+            im = Image.open(tmp_full).convert("RGBA")
+            cropped = im.crop((
+                region['x'],
+                region['y'],
+                region['x'] + region['width'],
+                region['y'] + region['height']
+            ))
+
+            # 如果需要预处理，应用预处理
+            if preprocess:
+                tmp_cropped = out_path + ".tmp_cropped.png"
+                cropped.save(tmp_cropped)
+                processed_path = self._preprocess_image(tmp_cropped, out_path)
+                # 清理临时文件
+                try:
+                    os.remove(tmp_cropped)
+                except Exception:
+                    pass
+                result_path = processed_path
+            else:
+                cropped.save(out_path)
+                result_path = out_path
+
+            # 清理临时文件
+            try:
+                os.remove(tmp_full)
+            except Exception:
+                pass
+
+            return CaptureResult(ok=True, path=result_path)
+
+        except Exception as e:
+            return CaptureResult(ok=False, error=f"裁剪区域失败：{e}")

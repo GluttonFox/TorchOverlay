@@ -104,9 +104,9 @@ class AppController:
             if self._cfg.ocr.debug_mode:
                 print(f"\n[余额识别] 尝试区域 {idx + 1}/{len(balance_regions)} ({region['name']}): x={region['x']}, y={region['y']}, width={region['width']}, height={region['height']}")
 
-            # 截取余额区域
+            # 截取余额区域（启用预处理以提高识别准确率）
             balance_out_path = os.path.join(os.getcwd(), f"captures/last_balance_{idx}.png")
-            cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, region, timeout_sec=2.5)
+            cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, region, timeout_sec=2.5, preprocess=True)
 
             if not cap.ok or not cap.path:
                 if self._cfg.ocr.debug_mode:
@@ -237,8 +237,9 @@ class AppController:
         if self._cfg.ocr.debug_mode:
             print(f"[余额识别（单独）] 完整client区域已保存到: {full_client_path}")
 
+        # 截取余额区域（启用预处理以提高识别准确率）
         balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
-        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5)
+        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=True)
 
         if not cap.ok or not cap.path:
             self._ui.show_info(f"截图失败：{cap.error}")
