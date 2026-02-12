@@ -70,37 +70,79 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        # 余额识别区域配置（可以扩展为配置项）
-        # 根据用户提供的位置: x=279, y=21, width=18, height=23
-        # 扩大区域以提高准确性
-        balance_region = {
-            'x': 250,  # 左边扩展29像素
-            'y': 10,   # 上边扩展11像素
-            'width': 100,  # 宽度扩展到100像素
-            'height': 50    # 高度扩展到50像素
-        }
+        # 余额识别区域配置（多个备用区域，依次尝试）
+        balance_regions = [
+            # 区域1: 根据用户提供的位置 x=279, y=21, 扩大
+            {
+                'x': 250,
+                'y': 10,
+                'width': 100,
+                'height': 50,
+                'name': '原位置扩大'
+            },
+            # 区域2: 根据识别到的位置 x=31, y=14, 扩大
+            {
+                'x': 20,
+                'y': 5,
+                'width': 80,
+                'height': 40,
+                'name': '新位置扩大'
+            },
+            # 区域3: 顶部更大区域
+            {
+                'x': 0,
+                'y': 0,
+                'width': 200,
+                'height': 80,
+                'name': '顶部大区域'
+            },
+        ]
 
-        # 截取余额区域
-        balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
-        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5)
+        balance_value = "--"
 
-        if not cap.ok or not cap.path:
-            self._ui.show_info(f"截图失败：{cap.error}")
-            return
+        for idx, region in enumerate(balance_regions):
+            if self._cfg.ocr.debug_mode:
+                print(f"\n[余额识别] 尝试区域 {idx + 1}/{len(balance_regions)} ({region['name']}): x={region['x']}, y={region['y']}, width={region['width']}, height={region['height']}")
 
-        # 识别余额
-        r = self._ocr.recognize(cap.path)
-        if r.ok and r.text:
-            # 提取数字作为余额
-            balance_value = self._extract_balance(r.text)
-            self._ui.update_balance(balance_value)
+            # 截取余额区域
+            balance_out_path = os.path.join(os.getcwd(), f"captures/last_balance_{idx}.png")
+            cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, region, timeout_sec=2.5)
+
+            if not cap.ok or not cap.path:
+                if self._cfg.ocr.debug_mode:
+                    print(f"[余额识别] 截图失败: {cap.error}")
+                continue
 
             if self._cfg.ocr.debug_mode:
-                print(f"\n[余额识别] 原始识别: {r.text}")
-                print(f"[余额识别] 提取余额: {balance_value}")
-        else:
-            if self._cfg.ocr.debug_mode:
-                print(f"[余额识别] 识别失败: {r.error if r.error else '未识别到文字'}")
+                print(f"[余额识别] 截图已保存到: {balance_out_path}")
+
+            # 识别余额
+            r = self._ocr.recognize(cap.path)
+            if r.ok and r.text:
+                # 提取数字作为余额
+                temp_balance = self._extract_balance(r.text)
+
+                if self._cfg.ocr.debug_mode:
+                    print(f"[余额识别] 原始识别: {repr(r.text)}")
+                    print(f"[余额识别] 提取余额: {temp_balance}")
+                    if r.raw and 'words_result' in r.raw:
+                        print(f"[余额识别] OCR原始响应:")
+                        for word_idx, word in enumerate(r.raw['words_result'][:3]):
+                            print(f"    [{word_idx}] {word}")
+
+                # 如果成功提取到数字，就使用这个结果
+                if temp_balance != "--":
+                    balance_value = temp_balance
+                    break
+            else:
+                if self._cfg.ocr.debug_mode:
+                    print(f"[余额识别] 识别失败: {r.error if r.error else '未识别到文字'}")
+
+        # 更新UI
+        self._ui.update_balance(balance_value)
+
+        if self._cfg.ocr.debug_mode and balance_value == "--":
+            print(f"\n[余额识别] 所有区域尝试失败，无法识别余额")
 
         # A：截 client 区域（用于OCR/Overlay对齐）
         out_path = os.path.join(os.getcwd(), "captures", "last_client.png")
@@ -185,6 +227,16 @@ class AppController:
             'height': 50
         }
 
+        if self._cfg.ocr.debug_mode:
+            print(f"\n[余额识别（单独）] 截图区域: x={balance_region['x']}, y={balance_region['y']}, width={balance_region['width']}, height={balance_region['height']}")
+
+        # 先保存完整client区域用于对比
+        full_client_path = os.path.join(os.getcwd(), "captures", "last_client_full.png")
+        full_cap = self._capture.capture_client_once(bound.hwnd, full_client_path, timeout_sec=2.5)
+
+        if self._cfg.ocr.debug_mode:
+            print(f"[余额识别（单独）] 完整client区域已保存到: {full_client_path}")
+
         balance_out_path = os.path.join(os.getcwd(), "captures", "last_balance.png")
         cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5)
 
@@ -192,15 +244,26 @@ class AppController:
             self._ui.show_info(f"截图失败：{cap.error}")
             return
 
+        if self._cfg.ocr.debug_mode:
+            print(f"[余额识别（单独）] 余额区域已保存到: {balance_out_path}")
+
         r = self._ocr.recognize(cap.path)
         if r.ok and r.text:
             balance_value = self._extract_balance(r.text)
             self._ui.update_balance(balance_value)
 
             if self._cfg.ocr.debug_mode:
-                print(f"\n[余额识别] 原始识别: {r.text}")
-                print(f"[余额识别] 提取余额: {balance_value}")
+                print(f"\n[余额识别（单独）] 原始识别: {repr(r.text)}")
+                print(f"[余额识别（单独）] 提取余额: {balance_value}")
+                if r.raw and 'words_result' in r.raw:
+                    print(f"[余额识别（单独）] OCR原始响应:")
+                    for idx, word in enumerate(r.raw['words_result'][:3]):
+                        print(f"    [{idx}] {word}")
         else:
+            if self._cfg.ocr.debug_mode:
+                print(f"[余额识别（单独）] 识别失败: {r.error if r.error else '未识别到文字'}")
+                if r.raw:
+                    print(f"[余额识别（单独）] 原始响应: {r.raw}")
             self._ui.show_info(f"余额识别失败: {r.error if r.error else '未识别到文字'}")
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
