@@ -1,27 +1,35 @@
 import json
-import os
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
 
-def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[dict[str, int], list[dict[str, Any]]]:
-    """根据分辨率自适应计算识别区域
+def _calculate_scale(client_width: int, client_height: int) -> tuple[float, float]:
+    """计算缩放比例
 
     Args:
         client_width: 窗口client区域宽度
         client_height: 窗口client区域高度
 
     Returns:
-        (balance_region, item_regions): 余额区域和物品区域列表
+        (scale_x, scale_y): x和y方向的缩放比例
     """
     # 基准分辨率（1920x1080）
     base_width = 1920
     base_height = 1080
 
-    # 计算缩放比例
-    scale_x = client_width / base_width
-    scale_y = client_height / base_height
+    return client_width / base_width, client_height / base_height
 
+
+def _create_balance_region(scale_x: float, scale_y: float) -> dict[str, int]:
+    """创建余额区域
+
+    Args:
+        scale_x: x方向缩放比例
+        scale_y: y方向缩放比例
+
+    Returns:
+        余额区域定义 {x, y, width, height, name}
+    """
     # 基准余额区域坐标
     base_balance = {
         "x": 1735,
@@ -31,6 +39,25 @@ def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[d
         "name": "余额区域"
     }
 
+    return {
+        "x": int(base_balance["x"] * scale_x),
+        "y": int(base_balance["y"] * scale_y),
+        "width": int(base_balance["width"] * scale_x),
+        "height": int(base_balance["height"] * scale_y),
+        "name": base_balance["name"]
+    }
+
+
+def _create_item_regions(scale_x: float, scale_y: float) -> list[dict[str, Any]]:
+    """创建物品区域
+
+    Args:
+        scale_x: x方向缩放比例
+        scale_y: y方向缩放比例
+
+    Returns:
+        物品区域列表，每个区域包含 {x, y, width, height, name}
+    """
     # 基准物品区域网格参数
     base_items = {
         "start_x": 423,
@@ -41,15 +68,6 @@ def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[d
         "vertical_spacing": 10,
         "rows": 2,
         "cols": 6
-    }
-
-    # 缩放余额区域
-    balance_region = {
-        "x": int(base_balance["x"] * scale_x),
-        "y": int(base_balance["y"] * scale_y),
-        "width": int(base_balance["width"] * scale_x),
-        "height": int(base_balance["height"] * scale_y),
-        "name": base_balance["name"]
     }
 
     # 生成物品区域（第1行6列，第2行2列）
@@ -70,7 +88,54 @@ def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[d
                 "name": f"item_r{row}_c{col}"
             })
 
+    return item_regions
+
+
+def get_regions_for_resolution(client_width: int, client_height: int) -> tuple[dict[str, int], list[dict[str, Any]]]:
+    """根据分辨率自适应计算识别区域
+
+    Args:
+        client_width: 窗口client区域宽度
+        client_height: 窗口client区域高度
+
+    Returns:
+        (balance_region, item_regions): 余额区域和物品区域列表
+    """
+    # 计算缩放比例
+    scale_x, scale_y = _calculate_scale(client_width, client_height)
+
+    # 创建余额区域
+    balance_region = _create_balance_region(scale_x, scale_y)
+
+    # 创建物品区域
+    item_regions = _create_item_regions(scale_x, scale_y)
+
     return balance_region, item_regions
+
+
+def get_bounding_box(regions: list[dict[str, Any]]) -> dict[str, Any]:
+    """计算包含所有区域的最小边界框
+
+    Args:
+        regions: 区域列表
+
+    Returns:
+        包含所有区域的边界框 {x, y, width, height}
+    """
+    if not regions:
+        return {"x": 0, "y": 0, "width": 0, "height": 0}
+
+    min_x = min(r['x'] for r in regions)
+    min_y = min(r['y'] for r in regions)
+    max_x = max(r['x'] + r['width'] for r in regions)
+    max_y = max(r['y'] + r['height'] for r in regions)
+
+    return {
+        "x": min_x,
+        "y": min_y,
+        "width": max_x - min_x,
+        "height": max_y - min_y
+    }
 
 
 def get_combined_item_region(item_regions: list[dict[str, Any]]) -> dict[str, Any]:
@@ -82,20 +147,7 @@ def get_combined_item_region(item_regions: list[dict[str, Any]]) -> dict[str, An
     Returns:
         包含所有区域的边界框 {x, y, width, height}
     """
-    if not item_regions:
-        return {"x": 0, "y": 0, "width": 0, "height": 0}
-
-    min_x = min(r['x'] for r in item_regions)
-    min_y = min(r['y'] for r in item_regions)
-    max_x = max(r['x'] + r['width'] for r in item_regions)
-    max_y = max(r['y'] + r['height'] for r in item_regions)
-
-    return {
-        "x": min_x,
-        "y": min_y,
-        "width": max_x - min_x,
-        "height": max_y - min_y
-    }
+    return get_bounding_box(item_regions)
 
 
 def get_combined_region(balance_region: dict[str, Any], item_regions: list[dict[str, Any]]) -> dict[str, Any]:
@@ -109,18 +161,7 @@ def get_combined_region(balance_region: dict[str, Any], item_regions: list[dict[
         包含所有区域的边界框 {x, y, width, height}
     """
     all_regions = [balance_region] + item_regions
-
-    min_x = min(r['x'] for r in all_regions)
-    min_y = min(r['y'] for r in all_regions)
-    max_x = max(r['x'] + r['width'] for r in all_regions)
-    max_y = max(r['y'] + r['height'] for r in all_regions)
-
-    return {
-        "x": min_x,
-        "y": min_y,
-        "width": max_x - min_x,
-        "height": max_y - min_y
-    }
+    return get_bounding_box(all_regions)
 
 
 @dataclass

@@ -119,22 +119,6 @@ class SettingsWindow:
         self.debug_var.set(self._cfg.ocr.debug_mode)
         self.interval_var.set(self._cfg.watch_interval_ms)
 
-    def _load_config(self):
-        """加载当前配置到界面"""
-        # 显示脱敏后的key
-        self.api_key_var.set(self._mask_sensitive(self._cfg.ocr.api_key))
-        self.secret_key_var.set(self._mask_sensitive(self._cfg.ocr.secret_key))
-
-        # 将API名称转换为中文显示
-        api_name = self._cfg.ocr.api_name
-        chinese_name = self._get_chinese_name_for_api(api_name)
-        self.api_name_var.set(chinese_name)
-
-        self.timeout_var.set(self._cfg.ocr.timeout_sec)
-        self.retries_var.set(self._cfg.ocr.max_retries)
-        self.debug_var.set(self._cfg.ocr.debug_mode)
-        self.interval_var.set(self._cfg.watch_interval_ms)
-
     def _mask_sensitive(self, value: str) -> str:
         """脱敏敏感信息，只显示前4位和最后4位"""
         if not value or len(value) <= 8:

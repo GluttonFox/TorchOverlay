@@ -1,8 +1,10 @@
 import os
+import re
 import time
 from typing import Any
 
 from core.config import AppConfig, get_regions_for_resolution, get_combined_region
+from core.paths import ProjectPaths
 from services.game_binder import GameBinder
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
@@ -13,6 +15,15 @@ from services.overlay.target_window import get_client_rect_in_screen
 
 class AppController:
     """控制器：业务流程与 UI 交互的中枢。"""
+
+    # 区域数量常量
+    TOTAL_ITEM_REGIONS = 8
+
+    # 预编译正则表达式，避免重复编译
+    _STUFF_PATTERN = re.compile(r'^(TUFF|STUFF)\s*', re.IGNORECASE)
+    _QUANTITY_PATTERN = re.compile(r'X\s*(\d+)', re.IGNORECASE)
+    _PRICE_PATTERN = re.compile(r'(\d+)\s*$')
+    _NUMBERS_PATTERN = re.compile(r'\d+')
 
     def __init__(
         self,
@@ -33,6 +44,16 @@ class AppController:
 
     def attach_ui(self, ui):
         self._ui = ui
+
+    def _debug_log(self, *args, **kwargs) -> None:
+        """调试日志（仅在debug模式下输出）
+
+        Args:
+            *args: 打印参数
+            **kwargs: 打印关键字参数
+        """
+        if self._cfg.ocr.debug_mode:
+            print(*args, **kwargs)
 
     def on_window_shown(self):
         self._ensure_bound_or_exit()
@@ -81,21 +102,19 @@ class AppController:
         # 计算包含所有区域的合并区域
         combined_region = get_combined_region(balance_region, item_regions)
 
-        if self._cfg.ocr.debug_mode:
-            print(f"\n[OCR优化] 合并区域: x={combined_region['x']}, y={combined_region['y']}, width={combined_region['width']}, height={combined_region['height']}")
-            print(f"[OCR优化] 窗口分辨率: {client_width}x{client_height}")
-            print(f"[OCR优化] 包含区域: 余额区域({balance_region['name']}) + {len(item_regions)}个物品区域")
+        self._debug_log(f"\n[OCR优化] 合并区域: x={combined_region['x']}, y={combined_region['y']}, width={combined_region['width']}, height={combined_region['height']}")
+        self._debug_log(f"[OCR优化] 窗口分辨率: {client_width}x{client_height}")
+        self._debug_log(f"[OCR优化] 包含区域: 余额区域({balance_region['name']}) + {len(item_regions)}个物品区域")
 
         # 截取合并区域（1次截图）
-        combined_out_path = os.path.join(os.getcwd(), "captures/last_combined.png")
+        combined_out_path = ProjectPaths.get_capture_path("last_combined.png")
         cap = self._capture.capture_region_once(bound.hwnd, combined_out_path, combined_region, timeout_sec=2.5, preprocess=False)
 
         if not cap.ok or not cap.path:
             self._ui.show_info("截图失败，无法识别。")
             return
 
-        if self._cfg.ocr.debug_mode:
-            print(f"[OCR优化] 截图已保存到: {combined_out_path}")
+        self._debug_log(f"[OCR优化] 截图已保存到: {combined_out_path}")
 
         # OCR识别（1次调用）
         r = self._ocr.recognize(cap.path)
@@ -103,10 +122,9 @@ class AppController:
             self._ui.show_info(f"OCR识别失败: {r.error}")
             return
 
-        if self._cfg.ocr.debug_mode:
-            print(f"[OCR优化] 原始识别文本: {repr(r.text)}")
-            if r.words:
-                print(f"[OCR优化] 识别到 {len(r.words)} 个文字块")
+        self._debug_log(f"[OCR优化] 原始识别文本: {repr(r.text)}")
+        if r.words:
+            self._debug_log(f"[OCR优化] 识别到 {len(r.words)} 个文字块")
 
         # 根据位置信息分配结果
         balance_value = "--"
@@ -124,8 +142,7 @@ class AppController:
                     balance_text = word.text
                     balance_value = self._extract_balance(balance_text)
 
-                    if self._cfg.ocr.debug_mode:
-                        print(f"[OCR优化] 文字块归属余额: {repr(balance_text)} -> 余额: {balance_value}")
+                    self._debug_log(f"[OCR优化] 文字块归属余额: {repr(balance_text)} -> 余额: {balance_value}")
                 else:
                     # 检查是否在某个物品区域内
                     for item_idx, item_region in enumerate(item_regions):
@@ -137,15 +154,14 @@ class AppController:
                                 'region_name': item_region['name']
                             })
 
-                            if self._cfg.ocr.debug_mode:
-                                print(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region['name']}): {repr(word.text)}")
+                            self._debug_log(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region['name']}): {repr(word.text)}")
                             break
 
         # 更新UI余额
         self._ui.update_balance(balance_value)
 
-        if self._cfg.ocr.debug_mode and balance_value == "--":
-            print(f"\n[OCR优化] 余额识别失败")
+        if balance_value == "--":
+            self._debug_log(f"\n[OCR优化] 余额识别失败")
 
         # 清空表格
         self._ui.clear_items_table()
@@ -209,8 +225,7 @@ class AppController:
             else:
                 combined_text = "--"
 
-            if self._cfg.ocr.debug_mode:
-                print(f"[物品识别] 区域 {idx + 1} ({region['name']}): 合并文本 = {repr(combined_text)}")
+            self._debug_log(f"[物品识别] 区域 {idx + 1} ({region['name']}): 合并文本 = {repr(combined_text)}")
 
             # 解析物品信息
             item_name, item_quantity, item_price = self._parse_item_info(combined_text)
@@ -218,16 +233,14 @@ class AppController:
 
     def _parse_item_info(self, text: str) -> tuple[str, str, str]:
         """解析物品信息，返回 (名称, 数量, 价格)"""
-        import re
-
         if text == "--":
             return "--", "--", "--"
 
         # 将换行符替换为空格，并压缩连续空格
         text = ' '.join(text.split())
 
-        # 去掉开头的 TUFF 或 STUFF 标记
-        text = re.sub(r'^(TUFF|STUFF)\s*', '', text, flags=re.IGNORECASE)
+        # 去掉开头的 TUFF 或 STUFF 标记（使用预编译正则）
+        text = self._STUFF_PATTERN.sub('', text)
 
         # 检查是否已售罄
         if '已售罄' in text:
@@ -235,23 +248,23 @@ class AppController:
             name = text.replace('已售罄', '').strip()
             return name, '已售罄', '0'
 
-        # 查找 "X" 后面的数字作为数量（X20 或 X 20）
-        quantity_match = re.search(r'X\s*(\d+)', text, re.IGNORECASE)
+        # 查找 "X" 后面的数字作为数量（使用预编译正则）
+        quantity_match = self._QUANTITY_PATTERN.search(text)
         if quantity_match:
             quantity = quantity_match.group(1)
             # 去掉数量部分，获取物品名称和价格
-            remaining = re.sub(r'X\s*\d+', '', text, flags=re.IGNORECASE).strip()
+            remaining = self._QUANTITY_PATTERN.sub('', text).strip()
         else:
             # 没有显式数量，默认为1
             quantity = '1'
             remaining = text
 
-        # 从剩余文本中提取最后一个数字作为价格
-        price_match = re.search(r'(\d+)\s*$', remaining)
+        # 从剩余文本中提取最后一个数字作为价格（使用预编译正则）
+        price_match = self._PRICE_PATTERN.search(remaining)
         if price_match:
             price = price_match.group(1)
             # 去掉价格，获取物品名称
-            name = re.sub(r'\d+\s*$', '', remaining).strip()
+            name = self._PRICE_PATTERN.sub('', remaining).strip()
         else:
             # 没有找到价格
             price = '--'
@@ -261,9 +274,8 @@ class AppController:
 
     def _extract_balance(self, text: str) -> str:
         """从识别的文本中提取余额数字"""
-        import re
-        # 匹配连续的数字
-        numbers = re.findall(r'\d+', text)
+        # 匹配连续的数字（使用预编译正则）
+        numbers = self._NUMBERS_PATTERN.findall(text)
         if numbers:
             # 取最长的数字串（最可能是余额）
             balance = max(numbers, key=len)
