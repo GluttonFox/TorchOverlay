@@ -6,6 +6,7 @@ from services.game_binder import GameBinder
 from services.process_watcher import ProcessWatcher
 from services.capture_service import CaptureService
 from services.ocr.base_ocr import IOcrEngine
+from services.overlay.overlay_service import OverlayService, OverlayTextItem
 
 
 class AppController:
@@ -18,12 +19,14 @@ class AppController:
         watcher: ProcessWatcher,
         capture: CaptureService,
         ocr: IOcrEngine,
+        overlay: OverlayService,
     ):
         self._cfg = cfg
         self._binder = binder
         self._watcher = watcher
         self._capture = capture
         self._ocr = ocr
+        self._overlay = overlay
         self._ui = None
 
     def attach_ui(self, ui):
@@ -41,6 +44,7 @@ class AppController:
 
             retry = self._ui.ask_bind_retry_or_exit()
             if not retry:
+                self._overlay.close()  # 关闭overlay
                 self._ui.close()
                 return
 
@@ -49,9 +53,11 @@ class AppController:
             bound = self._binder.bound
             if bound:
                 if not self._binder.is_bound_hwnd_valid():
+                    self._overlay.close()  # 关闭overlay
                     self._ui.close()
                     return
                 if not self._watcher.is_alive(bound):
+                    self._overlay.close()  # 关闭overlay
                     self._ui.close()
                     return
             self._ui.schedule(self._watcher.interval_ms, tick)
@@ -64,7 +70,44 @@ class AppController:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
-        # A：截 client 区域（用于OCR/Overlay对齐）
+        # 余额识别区域配置
+        balance_region = {
+            'x': self._cfg.balance_region.x,
+            'y': self._cfg.balance_region.y,
+            'width': self._cfg.balance_region.width,
+            'height': self._cfg.balance_region.height,
+            'name': '余额区域'
+        }
+
+        balance_value = "--"
+
+        if self._cfg.ocr.debug_mode:
+            print(f"\n[余额识别] 尝试区域 ({balance_region['name']}): x={balance_region['x']}, y={balance_region['y']}, width={balance_region['width']}, height={balance_region['height']}")
+
+        # 截取余额区域
+        balance_out_path = os.path.join(os.getcwd(), "captures/last_balance.png")
+        cap = self._capture.capture_region_once(bound.hwnd, balance_out_path, balance_region, timeout_sec=2.5, preprocess=False)
+
+        if cap.ok and cap.path:
+            if self._cfg.ocr.debug_mode:
+                print(f"[余额识别] 截图已保存到: {balance_out_path}")
+
+            # 识别余额
+            r = self._ocr.recognize(cap.path)
+            if r.ok and r.text:
+                balance_value = self._extract_balance(r.text)
+
+                if self._cfg.ocr.debug_mode:
+                    print(f"[余额识别] 原始识别: {repr(r.text)}")
+                    print(f"[余额识别] 提取余额: {balance_value}")
+
+        # 更新UI
+        self._ui.update_balance(balance_value)
+
+        if self._cfg.ocr.debug_mode and balance_value == "--":
+            print(f"\n[余额识别] 识别失败，无法识别余额")
+
+        # 截 client 区域（用于OCR/Overlay对齐）
         out_path = os.path.join(os.getcwd(), "captures", "last_client.png")
         cap = self._capture.capture_client_once(bound.hwnd, out_path, timeout_sec=2.5)
 
@@ -78,7 +121,59 @@ class AppController:
             self._ui.show_info(f"OCR失败：{r.error}")
             return
 
-        self._ui.show_info(r.text if r.text else "未识别到文字")
+        # 显示识别文本和坐标信息
+        if r.text:
+            # 创建或更新overlay
+            if not self._overlay.is_visible():
+                self._overlay.create_overlay(bound.hwnd)
+
+            # 转换OCR结果为overlay文本项
+            text_items = []
+            if r.words:
+                for word in r.words:
+                    text_item = OverlayTextItem(
+                        text=word.text,
+                        x=word.x,
+                        y=word.y,
+                        width=word.width,
+                        height=word.height,
+                        color="#00FF00",
+                        font_size=14,
+                    )
+                    text_items.append(text_item)
+
+                # 在overlay上显示文本
+                self._overlay.show_texts(text_items)
+
+                # 在控制台输出坐标信息
+                if self._cfg.ocr.debug_mode:
+                    print("\n[Overlay] 识别到的文本及坐标信息:")
+                    for word in r.words:
+                        print(f"  文本: {word.text}")
+                        print(f"  位置: x={word.x}, y={word.y}, width={word.width}, height={word.height}")
+                        print(f"  边界: ({word.x}, {word.y}) - ({word.x + word.width}, {word.y + word.height})")
+            else:
+                self._overlay.close()
+                self._ui.show_info(r.text)
+        else:
+            self._overlay.close()
+            self._ui.show_info("未识别到文字")
+
+    def _extract_balance(self, text: str) -> str:
+        """从识别的文本中提取余额数字"""
+        import re
+        # 匹配连续的数字
+        numbers = re.findall(r'\d+', text)
+        if numbers:
+            # 取最长的数字串（最可能是余额）
+            balance = max(numbers, key=len)
+            # 格式化余额（添加千分位分隔符）
+            try:
+                num = int(balance)
+                return f"{num:,}"
+            except ValueError:
+                return balance
+        return "--"
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
         """更新配置"""
@@ -95,7 +190,7 @@ class AppController:
                 ocr=ocr_config,
             )
 
-            # 保存到文件
+            # 保存配置文件
             if not self._cfg.save():
                 raise Exception("保存配置文件失败")
 

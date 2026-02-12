@@ -78,6 +78,67 @@ class CaptureService:
 
         return result
 
+    def capture_region_once(
+        self,
+        target_hwnd: int,
+        out_path: str,
+        region: dict,
+        timeout_sec: float = 2.5,
+        preprocess: bool = False,
+    ) -> CaptureResult:
+        """
+        截取 client 区域内的指定子区域
+        region: 字典，包含 x, y, width, height（相对于 client 区域的坐标）
+        preprocess: 是否对截图进行预处理（可选，当前未实现）
+        """
+        if not target_hwnd or not win32gui.IsWindow(target_hwnd):
+            return CaptureResult(ok=False, error="无效的目标窗口句柄(hwnd)")
+
+        out_path = os.path.abspath(out_path)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+        tmp_client = out_path + ".tmp_client.png"
+
+        # 1) 先截取整个 client 区域
+        client = self.capture_client_once(target_hwnd, tmp_client, timeout_sec=timeout_sec)
+        if not client.ok or not client.path:
+            return client
+
+        # 2) 从 client 截图中裁剪出指定区域
+        try:
+            x = int(region['x'])
+            y = int(region['y'])
+            width = int(region['width'])
+            height = int(region['height'])
+
+            im = Image.open(tmp_client).convert("RGBA")
+            img_w, img_h = im.size
+
+            # 检查区域是否在图像范围内
+            if x < 0 or y < 0 or x + width > img_w or y + height > img_h:
+                return CaptureResult(ok=False, error=f"区域超出图像范围: image={img_w}x{img_h}, region={x},{y},{width},{height}")
+
+            # 裁剪区域
+            cropped = im.crop((x, y, x + width, y + height))
+
+            # 如果需要预处理，可以在这里添加（当前未实现）
+            if preprocess:
+                # 可以添加图像增强、去噪等预处理逻辑
+                pass
+
+            cropped.save(out_path)
+
+            # 清理临时文件
+            try:
+                os.remove(tmp_client)
+            except Exception:
+                pass
+
+            return CaptureResult(ok=True, path=out_path)
+
+        except Exception as e:
+            return CaptureResult(ok=False, error=f"裁剪区域失败：{e}")
+
     def capture_client_once(
         self,
         target_hwnd: int,
@@ -128,3 +189,5 @@ class CaptureService:
 
         except Exception as e:
             return CaptureResult(ok=False, error=f"裁剪 client 失败：{e}")
+
+

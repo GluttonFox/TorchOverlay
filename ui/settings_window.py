@@ -42,7 +42,7 @@ class SettingsWindow:
 
         # OCR设置分组
         ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
-        ocr_frame.place(x=20, y=20, width=610, height=300)
+        ocr_frame.place(x=20, y=20, width=610, height=240)
 
         # API Key
         ttk.Label(ocr_frame, text="API Key:").place(x=10, y=10)
@@ -89,7 +89,7 @@ class SettingsWindow:
 
         # 应用设置分组
         app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=330, width=610, height=80)
+        app_frame.place(x=20, y=270, width=610, height=70)
 
         # 监控间隔
         ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
@@ -98,10 +98,26 @@ class SettingsWindow:
 
         # 按钮
         button_frame = ttk.Frame(self.window)
-        button_frame.place(x=20, y=420, width=610, height=50)
+        button_frame.place(x=20, y=350, width=610, height=50)
 
         ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=320, y=10)
         ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=450, y=10)
+
+    def _load_config(self):
+        """加载当前配置到界面"""
+        # 显示脱敏后的key
+        self.api_key_var.set(self._mask_sensitive(self._cfg.ocr.api_key))
+        self.secret_key_var.set(self._mask_sensitive(self._cfg.ocr.secret_key))
+
+        # 将API名称转换为中文显示
+        api_name = self._cfg.ocr.api_name
+        chinese_name = self._get_chinese_name_for_api(api_name)
+        self.api_name_var.set(chinese_name)
+
+        self.timeout_var.set(self._cfg.ocr.timeout_sec)
+        self.retries_var.set(self._cfg.ocr.max_retries)
+        self.debug_var.set(self._cfg.ocr.debug_mode)
+        self.interval_var.set(self._cfg.watch_interval_ms)
 
     def _load_config(self):
         """加载当前配置到界面"""

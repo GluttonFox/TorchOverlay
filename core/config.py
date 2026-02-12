@@ -4,6 +4,21 @@ from dataclasses import dataclass, field, asdict
 from typing import Any
 
 @dataclass
+class BalanceRegionConfig:
+    """余额识别区域配置（内部配置，不在UI中展示）"""
+    x: int = 1735
+    y: int = 36
+    width: int = 100
+    height: int = 40
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> 'BalanceRegionConfig':
+        return cls(**data)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+@dataclass
 class OcrConfig:
     api_key: str = ""
     secret_key: str = ""
@@ -26,6 +41,7 @@ class AppConfig:
     watch_interval_ms: int = 500
     elevated_marker: str = "--elevated"
     ocr: OcrConfig = field(default_factory=OcrConfig)
+    balance_region: BalanceRegionConfig = field(default_factory=BalanceRegionConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':

@@ -8,7 +8,7 @@ from typing import Any
 
 import requests
 
-from services.ocr.base_ocr import IOcrEngine, OcrResult
+from services.ocr.base_ocr import IOcrEngine, OcrResult, OcrWordResult
 
 
 @dataclass(frozen=True)
@@ -66,6 +66,15 @@ class BaiduOcrEngine(IOcrEngine):
                     raise RuntimeError(last_err)
 
                 j = resp.json()
+
+                # 调试输出原始数据
+                if self._cfg.debug_mode:
+                    print(f"\n[BaiduOcr] 原始响应数据:")
+                    print(f"  API类型: {self._cfg.api_name}")
+                    print(f"  识别结果数量: {len(j.get('words_result', []))}")
+                    if j.get('words_result'):
+                        print(f"  第一个结果: {json.dumps(j['words_result'][0], ensure_ascii=False, indent=2)}")
+
                 # 百度错误结构：error_code / error_msg
                 if "error_code" in j:
                     # token 失效常见：110/111 等（有时会出现）
@@ -78,8 +87,8 @@ class BaiduOcrEngine(IOcrEngine):
                         continue
                     return OcrResult(ok=False, raw=j, error=last_err)
 
-                text = self._parse_words_result(j)
-                return OcrResult(ok=True, text=text, raw=j)
+                text, words_list = self._parse_words_result(j)
+                return OcrResult(ok=True, text=text, words=words_list, raw=j)
 
             except Exception as e:
                 last_err = str(e)
@@ -139,13 +148,54 @@ class BaiduOcrEngine(IOcrEngine):
             return base64.b64encode(f.read()).decode("utf-8")
 
     @staticmethod
-    def _parse_words_result(j: dict[str, Any]) -> str:
-        # 标准通用：words_result: [{"words": "..."}...]
+    def _parse_words_result(j: dict[str, Any]) -> tuple[str, list[OcrWordResult]]:
+        """解析OCR结果，返回文本和带位置信息的文字块列表"""
         arr = j.get("words_result")
         if not isinstance(arr, list):
-            return ""
+            return "", []
+
         parts = []
-        for it in arr:
+        words_list = []
+
+        for idx, it in enumerate(arr):
             if isinstance(it, dict) and isinstance(it.get("words"), str):
-                parts.append(it["words"])
-        return "\n".join(parts).strip()
+                text = it["words"]
+                parts.append(text)
+
+                # 尝试解析位置信息 - 百度OCR不同API返回格式不同
+                # 格式1: location字段中
+                location = it.get("location")
+                if location and isinstance(location, dict):
+                    x = int(location.get("left", 0))
+                    y = int(location.get("top", 0))
+                    width = int(location.get("width", 0))
+                    height = int(location.get("height", 0))
+                # 格式2: 直接在顶层 (某些高精度API可能这样返回)
+                elif it.get("left") is not None:
+                    x = int(it.get("left", 0))
+                    y = int(it.get("top", 0))
+                    width = int(it.get("width", 0))
+                    height = int(it.get("height", 0))
+                else:
+                    # 没有位置信息
+                    x = y = width = height = 0
+
+                word_result = OcrWordResult(
+                    text=text,
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=height,
+                    raw=it,
+                )
+
+                # 调试输出第一个结果的位置信息
+                if idx == 0:
+                    print(f"[BaiduOcr] 文本块: {text}")
+                    print(f"  位置信息: x={x}, y={y}, width={width}, height={height}")
+                    if x == 0 and y == 0 and width == 0 and height == 0:
+                        print(f"  ⚠️ 警告: API未返回位置信息！请使用「高精度带坐标」API（accurate）")
+
+                words_list.append(word_result)
+
+        return "\n".join(parts).strip(), words_list
