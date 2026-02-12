@@ -49,3 +49,12 @@ captures/*.bmp
 # Config files (contains sensitive API keys and regions)
 config.json
 range.json
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+tests/fixtures/sample_images/*.png
+tests/output/

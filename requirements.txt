@@ -11,3 +11,8 @@ windows-capture>=0.4.0; sys_platform == 'win32'
 
 # 配置管理
 python-dotenv>=1.0.0
+
+# 测试框架
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
