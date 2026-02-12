@@ -20,7 +20,7 @@ class GameBinder(IGameBinder):
             return False
 
         pid = self._finder.get_pid(hwnd)
-        self._bound = BoundGame(hwnd=hwnd, pid=pid, title=title)
+        self._bound = BoundGame(hwnd=hwnd, process_id=pid, title=title)
         return True
 
     def is_bound_hwnd_valid(self) -> bool:

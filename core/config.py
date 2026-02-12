@@ -1,3 +1,4 @@
+import os
 import json
 from dataclasses import dataclass, field, asdict
 from typing import Any
@@ -188,6 +189,7 @@ class AppConfig:
     watch_interval_ms: int = 500
     elevated_marker: str = "--elevated"
     ocr: OcrConfig = field(default_factory=OcrConfig)
+    last_price_update: str = ""  # 上次物价更新时间（ISO格式字符串）
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':

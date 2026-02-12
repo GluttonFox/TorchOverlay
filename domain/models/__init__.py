@@ -3,6 +3,7 @@ from .region import Region
 from .item_info import ItemInfo
 from .capture_result import CaptureResult
 from .ocr_result import OcrResult, OcrWordResult
+from .bound_game import BoundGame
 
 __all__ = [
     'Region',
@@ -10,4 +11,5 @@ __all__ = [
     'CaptureResult',
     'OcrResult',
     'OcrWordResult',
+    'BoundGame',
 ]

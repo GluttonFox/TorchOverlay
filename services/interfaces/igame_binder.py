@@ -1,15 +1,8 @@
 """游戏绑定器接口"""
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any
 
-
-@dataclass
-class BoundGame:
-    """绑定的游戏信息"""
-    hwnd: int
-    title: str
-    process_id: int
+from domain.models import BoundGame
 
 
 class IGameBinder(ABC):

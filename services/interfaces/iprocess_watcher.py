@@ -1,5 +1,6 @@
 """进程监视器接口"""
 from abc import ABC, abstractmethod
+from typing import Any
 
 
 class IProcessWatcher(ABC):

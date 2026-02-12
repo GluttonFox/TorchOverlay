@@ -1,7 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import json
+import os
+from datetime import datetime
 from core.config import AppConfig, OcrConfig
-from core.models import BoundGame
+from domain.models import BoundGame
 from ui.settings_window import SettingsWindow
 
 class MainWindow:
@@ -26,18 +29,44 @@ class MainWindow:
         # 物品识别结果表格
         tk.Label(self.root, text="物品识别结果：", font=("Segoe UI", 12, "bold")).place(x=16, y=100)
 
+        # 更新物价按钮和时间显示
+        self.btn_update_price = tk.Button(
+            self.root,
+            text="更新物价",
+            font=("Segoe UI", 9),
+            command=self._controller.on_update_price_click
+        )
+        self.btn_update_price.place(x=300, y=100, width=80, height=24)
+
+        self.lbl_last_update = tk.Label(
+            self.root,
+            text="上次更新：未更新",
+            font=("Segoe UI", 9),
+            fg="#666666"
+        )
+        self.lbl_last_update.place(x=390, y=102, width=180, height=20)
+
+        # 从config.json加载上次更新时间
+        self._load_last_update_time()
+
         # 创建表格
-        columns = ("index", "name", "quantity", "price")
+        columns = ("index", "name", "quantity", "price", "original_price", "converted_price", "profit_ratio")
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings", height=8)
         self.tree.heading("index", text="序号")
         self.tree.heading("name", text="物品名称")
-        self.tree.heading("quantity", text="数量")
-        self.tree.heading("price", text="价格")
+        self.tree.heading("quantity", text="物品数量")
+        self.tree.heading("price", text="辉石数量")
+        self.tree.heading("original_price", text="原始价格")
+        self.tree.heading("converted_price", text="转换价格")
+        self.tree.heading("profit_ratio", text="盈亏比")
 
         self.tree.column("index", width=40, anchor="center", stretch=False)
-        self.tree.column("name", width=320, anchor="w", stretch=False)
+        self.tree.column("name", width=200, anchor="w", stretch=False)
         self.tree.column("quantity", width=80, anchor="center", stretch=False)
-        self.tree.column("price", width=100, anchor="center", stretch=False)
+        self.tree.column("price", width=80, anchor="center", stretch=False)
+        self.tree.column("original_price", width=80, anchor="center", stretch=False)
+        self.tree.column("converted_price", width=80, anchor="center", stretch=False)
+        self.tree.column("profit_ratio", width=80, anchor="center", stretch=False)
 
         self.tree.place(x=16, y=125, width=588, height=220)
 
@@ -98,14 +127,43 @@ class MainWindow:
         """更新余额显示"""
         self.lbl_balance.config(text=balance)
 
+    def update_last_update_time(self, last_update_time):
+        """更新最后更新时间显示"""
+        if last_update_time is None:
+            self.lbl_last_update.config(text="上次更新：未更新")
+        else:
+            time_str = last_update_time.strftime("%Y-%m-%d %H:%M")
+            self.lbl_last_update.config(text=f"上次更新：{time_str}")
+
+    def _load_last_update_time(self):
+        """从config.json加载上次更新时间"""
+        try:
+            config_path = AppConfig.get_config_path()
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+
+                if 'last_price_update' in config_data and config_data['last_price_update']:
+                    try:
+                        last_update = datetime.fromisoformat(config_data['last_price_update'])
+                        self.update_last_update_time(last_update)
+                    except ValueError:
+                        self.lbl_last_update.config(text="上次更新：未更新")
+                else:
+                    self.lbl_last_update.config(text="上次更新：未更新")
+        except Exception as e:
+            print(f"加载上次更新时间失败: {e}")
+            self.lbl_last_update.config(text="上次更新：未更新")
+
     def clear_items_table(self):
         """清空物品表格"""
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def add_item_result(self, index: int, region: str, name: str, quantity: str, price: str):
+    def add_item_result(self, index: int, region: str, name: str, quantity: str, price: str,
+                       original_price: str = "--", converted_price: str = "--", profit_ratio: str = "--"):
         """添加物品识别结果到表格"""
-        self.tree.insert("", "end", values=(index, name, quantity, price))
+        self.tree.insert("", "end", values=(index, name, quantity, price, original_price, converted_price, profit_ratio))
 
     def schedule(self, delay_ms: int, fn):
         self.root.after(delay_ms, fn)

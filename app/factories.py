@@ -8,6 +8,9 @@ from ui.main_window import MainWindow
 from services.capture_service import CaptureService
 from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
 from services.overlay.overlay_service import OverlayService
+from services.item_price_service import ItemPriceService
+from services.price_update_service import PriceUpdateService
+from domain.services import TextParserService, RegionCalculatorService
 
 
 class AppFactory:
@@ -30,7 +33,7 @@ class AppFactory:
         return self._cfg
 
     def create_admin_service(self) -> AdminService:
-        return AdminService()
+        return AdminService(self._cfg)
 
     def create_window_finder(self) -> WindowFinder:
         return WindowFinder(self._cfg.keywords)
@@ -48,7 +51,27 @@ class AppFactory:
         capture = self.create_capture_service()
         ocr = self.create_ocr_engine()
         overlay = self.create_overlay_service()
-        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay)
+        text_parser = self.create_text_parser_service()
+        region_calculator = self.create_region_calculator_service()
+        item_price_service = self.create_item_price_service()
+        price_update_service = self.create_price_update_service()
+        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay, text_parser=text_parser, region_calculator=region_calculator, item_price_service=item_price_service, price_update_service=price_update_service)
+
+    def create_text_parser_service(self) -> TextParserService:
+        """创建文本解析服务"""
+        return TextParserService()
+
+    def create_region_calculator_service(self) -> RegionCalculatorService:
+        """创建区域计算服务"""
+        return RegionCalculatorService()
+
+    def create_item_price_service(self) -> ItemPriceService:
+        """创建物品价格服务"""
+        return ItemPriceService()
+
+    def create_price_update_service(self) -> PriceUpdateService:
+        """创建物价更新服务"""
+        return PriceUpdateService(self._cfg)
 
     def create_overlay_service(self) -> OverlayService:
         return OverlayService()

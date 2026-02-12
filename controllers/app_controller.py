@@ -32,6 +32,8 @@ class AppController:
         overlay: IOverlayService,
         text_parser: TextParserService,
         region_calculator: RegionCalculatorService,
+        item_price_service,
+        price_update_service,
     ):
         """初始化控制器
 
@@ -44,6 +46,8 @@ class AppController:
             overlay: Overlay服务接口
             text_parser: 文本解析领域服务
             region_calculator: 区域计算领域服务
+            item_price_service: 物品价格服务
+            price_update_service: 物价更新服务
         """
         self._cfg = cfg
         self._binder = binder
@@ -53,6 +57,8 @@ class AppController:
         self._overlay = overlay
         self._text_parser = text_parser
         self._region_calculator = region_calculator
+        self._item_price_service = item_price_service
+        self._price_update_service = price_update_service
         self._ui = None
 
     def attach_ui(self, ui):
@@ -219,6 +225,58 @@ class AppController:
         # 批量添加物品结果到表格
         self._add_item_results_batch(item_results, item_regions)
 
+    def on_update_price_click(self):
+        """处理更新物价按钮点击事件"""
+        if not self._price_update_service.can_update():
+            last_update = self._price_update_service.get_last_update_time()
+            if last_update:
+                time_str = last_update.strftime("%Y-%m-%d %H:%M:%S")
+                self._ui.show_info(f"距离上次更新不到1小时。\n上次更新时间：{time_str}")
+            else:
+                self._ui.show_info("距离上次更新不到1小时。")
+            return
+
+        # 禁用按钮，防止重复点击
+        self._ui.btn_update_price.config(state="disabled", text="更新中...")
+
+        # 在UI线程中异步执行更新
+        def do_update():
+            success, message = self._price_update_service.update_prices()
+
+            # 重新启用按钮
+            self._ui.btn_update_price.config(state="normal", text="更新物价")
+
+            # 重新加载价格数据到内存
+            if success:
+                self._reload_item_prices()
+                # 从config.json重新加载上次更新时间
+                self._ui._load_last_update_time()
+
+            # 显示结果
+            self._ui.show_info(message)
+
+        self._ui.schedule(0, do_update)
+
+    def _reload_item_prices(self):
+        """重新加载物品价格数据"""
+        try:
+            import importlib
+            import services.item_price_service
+
+            # 重新加载模块
+            importlib.reload(services.item_price_service)
+
+            # 创建新的服务实例
+            from services.item_price_service import ItemPriceService
+            new_service = ItemPriceService()
+
+            # 更新控制器的价格服务引用
+            self._item_price_service = new_service
+
+            self._debug_log("物品价格数据已重新加载")
+        except Exception as e:
+            self._debug_log(f"重新加载物品价格失败: {e}")
+
     def _add_item_results_batch(self, item_results: list[dict], item_regions: list[Region]):
         """批量添加物品识别结果到表格
 
@@ -246,7 +304,40 @@ class AppController:
 
             # 解析物品信息（使用领域服务）
             item_name, item_quantity, item_price = self._text_parser.parse_item_info(combined_text)
-            self._ui.add_item_result(idx + 1, region.name, item_name, item_quantity, item_price)
+
+            # 计算价格相关信息
+            original_price = "--"
+            converted_price = "--"
+            profit_ratio = "--"
+
+            if item_name != "--" and item_name != "已售罄":
+                # 获取原始价格（单价）
+                unit_price = self._item_price_service.get_price_by_name(item_name)
+                if unit_price is not None:
+                    original_price = f"{unit_price:.4f}"
+
+                    # 计算转换价格（物品数量 * 原始价格）
+                    try:
+                        quantity_int = int(item_quantity)
+                        converted_price_value = quantity_int * unit_price
+                        converted_price = f"{converted_price_value:.2f}"
+
+                        # 计算盈亏比（转换价格 / 辉石数量）
+                        if item_price != "--":
+                            try:
+                                price_int = int(item_price)
+                                if price_int > 0:
+                                    profit_ratio_value = converted_price_value / price_int
+                                    profit_ratio = f"{profit_ratio_value:.2f}"
+                            except ValueError:
+                                pass
+                    except ValueError:
+                        pass
+
+            self._ui.add_item_result(
+                idx + 1, region.name, item_name, item_quantity, item_price,
+                original_price, converted_price, profit_ratio
+            )
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
         """更新配置

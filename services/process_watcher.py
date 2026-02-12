@@ -18,7 +18,7 @@ class ProcessWatcher(IProcessWatcher):
 
     def is_alive(self, bound: BoundGame) -> bool:
         try:
-            p = psutil.Process(bound.pid)
+            p = psutil.Process(bound.process_id)
             return p.is_running()
         except Exception:
             return False
