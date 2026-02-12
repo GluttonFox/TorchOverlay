@@ -1,8 +1,9 @@
-from core.models import BoundGame
+from domain.models import BoundGame
+from services.interfaces import IGameBinder
 from services.window_finder import WindowFinder
 
-class GameBinder:
-    """绑定逻辑封装：只负责‘找窗口 -> 生成绑定对象’。"""
+class GameBinder(IGameBinder):
+    """绑定逻辑封装：只负责'找窗口 -> 生成绑定对象'。"""
 
     def __init__(self, finder: WindowFinder):
         self._finder = finder

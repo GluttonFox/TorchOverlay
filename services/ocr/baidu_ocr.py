@@ -1,3 +1,4 @@
+"""百度OCR服务实现 - 实现IOcrService接口"""
 from __future__ import annotations
 
 import base64
@@ -8,24 +9,25 @@ from typing import Any
 
 import requests
 
-from services.ocr.base_ocr import IOcrEngine, OcrResult, OcrWordResult
+from services.interfaces import IOcrService, OcrResult
 
 
 @dataclass(frozen=True)
 class BaiduOcrConfig:
+    """百度OCR配置"""
     api_key: str
     secret_key: str
-    # 标准版（够用、便宜、快）；你后续想用高精度我也给了接口名
-    api_name: str = "general_basic"  # general_basic / accurate_basic
+    # 标准版（够用、便宜、快）；高精度：accurate
+    api_name: str = "general_basic"
     timeout_sec: float = 15.0
     max_retries: int = 2
     backoff_sec: float = 0.6
     debug_mode: bool = False  # 调试模式
 
 
-class BaiduOcrEngine(IOcrEngine):
+class BaiduOcrEngine(IOcrService):
     """
-    百度OCR接入（自动token缓存）：
+    百度OCR接入（自动token缓存）
     - 获取access_token: https://aip.baidubce.com/oauth/2.0/token
     - OCR识别: https://aip.baidubce.com/rest/2.0/ocr/v1/{api_name}
     文档：ai.baidu.com / cloud.baidu.com OCR
@@ -37,6 +39,14 @@ class BaiduOcrEngine(IOcrEngine):
         self._token_expire_at: float = 0.0  # epoch seconds
 
     def recognize(self, image_path: str) -> OcrResult:
+        """识别图片中的文字
+
+        Args:
+            image_path: 图片路径
+
+        Returns:
+            OCR识别结果
+        """
         try:
             img_b64 = self._read_base64(image_path)
         except Exception as e:
@@ -77,7 +87,7 @@ class BaiduOcrEngine(IOcrEngine):
 
                 # 百度错误结构：error_code / error_msg
                 if "error_code" in j:
-                    # token 失效常见：110/111 等（有时会出现）
+                    # token 失效常见：110/111 等
                     # 这里遇到错误就清 token 重试一次
                     last_err = f"百度OCR错误 {j.get('error_code')}: {j.get('error_msg')}"
                     if attempt < self._cfg.max_retries:
@@ -99,103 +109,67 @@ class BaiduOcrEngine(IOcrEngine):
 
         return OcrResult(ok=False, error=f"百度OCR失败：{last_err or 'unknown'}")
 
-    # ---------------- token ----------------
-
     def _get_access_token(self) -> str:
+        """获取access_token，自动缓存"""
         now = time.time()
         if self._token and now < self._token_expire_at:
             return self._token
-
-        if self._cfg.debug_mode:
-            print(f"[BaiduOcr] 获取 Access Token:")
-            print(f"  API Key: {self._cfg.api_key[:10]}... (长度: {len(self._cfg.api_key)})")
-            print(f"  Secret Key: {self._cfg.secret_key[:10]}... (长度: {len(self._cfg.secret_key)})")
 
         url = "https://aip.baidubce.com/oauth/2.0/token"
         params = {
             "grant_type": "client_credentials",
             "client_id": self._cfg.api_key,
-            "client_secret": self._cfg.secret_key,
+            "client_secret": self._cfg.secret_key
         }
+
         resp = requests.get(url, params=params, timeout=self._cfg.timeout_sec)
-
-        if self._cfg.debug_mode:
-            print(f"  响应状态码: {resp.status_code}")
-
         if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
+            raise RuntimeError(f"获取token失败: HTTP {resp.status_code}")
 
         j = resp.json()
-        token = j.get("access_token")
-        expires_in = j.get("expires_in")  # 秒
-        if not token or not expires_in:
-            raise RuntimeError(f"token返回异常：{json.dumps(j, ensure_ascii=False)[:300]}")
+        if "access_token" not in j:
+            raise RuntimeError(f"获取token失败: 响应无access_token: {j}")
 
-        # 提前 60 秒过期，避免边界问题
-        self._token = token
-        self._token_expire_at = time.time() + int(expires_in) - 60
+        # 缓存token，提前60秒过期
+        self._token = j["access_token"]
+        expires_in = j.get("expires_in", 2592000)  # 默认30天
+        self._token_expire_at = now + expires_in - 60
 
-        if self._cfg.debug_mode:
-            print(f"  Token 获取成功: {token[:20]}...{token[-20:]}")
+        return self._token
 
-        return token
-
-    # ---------------- helpers ----------------
-
-    @staticmethod
-    def _read_base64(path: str) -> str:
-        with open(path, "rb") as f:
+    def _read_base64(self, image_path: str) -> str:
+        """读取图片并转为base64"""
+        with open(image_path, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
 
-    @staticmethod
-    def _parse_words_result(j: dict[str, Any]) -> tuple[str, list[OcrWordResult]]:
-        """解析OCR结果，返回文本和带位置信息的文字块列表"""
-        arr = j.get("words_result")
-        if not isinstance(arr, list):
-            return "", []
+    def _parse_words_result(self, j: dict) -> tuple[str, list[Any]]:
+        """解析百度OCR返回的words_result
 
-        parts = []
+        Args:
+            j: 百度OCR返回的JSON
+
+        Returns:
+            (text, words_list): 完整文本和文字块列表
+        """
+        words_result = j.get("words_result", [])
+
+        # 提取完整文本
+        text_lines = [item.get("words", "") for item in words_result]
+        text = "\n".join(text_lines)
+
+        # 提取文字块（带位置信息）
+        from domain.models import OcrWordResult
+
         words_list = []
+        for item in words_result:
+            location = item.get("location", {})
+            words_list.append(OcrWordResult(
+                text=item.get("words", ""),
+                x=location.get("left", 0),
+                y=location.get("top", 0),
+                width=location.get("width", 0),
+                height=location.get("height", 0),
+                raw=item
+            ))
 
-        for idx, it in enumerate(arr):
-            if isinstance(it, dict) and isinstance(it.get("words"), str):
-                text = it["words"]
-                parts.append(text)
-
-                # 尝试解析位置信息 - 百度OCR不同API返回格式不同
-                # 格式1: location字段中
-                location = it.get("location")
-                if location and isinstance(location, dict):
-                    x = int(location.get("left", 0))
-                    y = int(location.get("top", 0))
-                    width = int(location.get("width", 0))
-                    height = int(location.get("height", 0))
-                # 格式2: 直接在顶层 (某些高精度API可能这样返回)
-                elif it.get("left") is not None:
-                    x = int(it.get("left", 0))
-                    y = int(it.get("top", 0))
-                    width = int(it.get("width", 0))
-                    height = int(it.get("height", 0))
-                else:
-                    # 没有位置信息
-                    x = y = width = height = 0
-
-                word_result = OcrWordResult(
-                    text=text,
-                    x=x,
-                    y=y,
-                    width=width,
-                    height=height,
-                    raw=it,
-                )
-
-                # 调试输出第一个结果的位置信息
-                if idx == 0:
-                    print(f"[BaiduOcr] 文本块: {text}")
-                    print(f"  位置信息: x={x}, y={y}, width={width}, height={height}")
-                    if x == 0 and y == 0 and width == 0 and height == 0:
-                        print(f"  ⚠️ 警告: API未返回位置信息！请使用「高精度带坐标」API（accurate）")
-
-                words_list.append(word_result)
-
-        return "\n".join(parts).strip(), words_list
+        return text, words_list

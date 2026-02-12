@@ -2,6 +2,7 @@ import tkinter as tk
 from dataclasses import dataclass
 from typing import Any
 
+from services.interfaces import IOverlayService
 from services.overlay.target_window import get_client_rect_in_screen
 
 
@@ -18,7 +19,7 @@ class OverlayTextItem:
     background: str = "#000000"  # 背景色（半透明黑色）
 
 
-class OverlayService:
+class OverlayService(IOverlayService):
     """覆盖层服务：在目标窗口上显示识别文本"""
 
     def __init__(self):

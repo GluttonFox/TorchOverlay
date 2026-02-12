@@ -1,48 +1,66 @@
-import os
-import re
-import time
+"""应用控制器 - 重构版，使用接口抽象和领域服务"""
 from typing import Any
 
-from core.config import AppConfig, get_regions_for_resolution, get_combined_region
+from core.config import AppConfig
 from core.paths import ProjectPaths
-from services.game_binder import GameBinder
-from services.process_watcher import ProcessWatcher
-from services.capture_service import CaptureService
-from services.ocr.base_ocr import IOcrEngine
-from services.overlay.overlay_service import OverlayService, OverlayTextItem
+from services.interfaces import (
+    IGameBinder,
+    IProcessWatcher,
+    ICaptureService,
+    IOcrService,
+    IOverlayService,
+)
 from services.overlay.target_window import get_client_rect_in_screen
+from domain.services import TextParserService, RegionCalculatorService
+from domain.models import Region
 
 
 class AppController:
-    """控制器：业务流程与 UI 交互的中枢。"""
+    """控制器：业务流程与 UI 交互的中枢。
 
-    # 区域数量常量
-    TOTAL_ITEM_REGIONS = 8
-
-    # 预编译正则表达式，避免重复编译
-    _STUFF_PATTERN = re.compile(r'^(TUFF|STUFF)\s*', re.IGNORECASE)
-    _QUANTITY_PATTERN = re.compile(r'X\s*(\d+)', re.IGNORECASE)
-    _PRICE_PATTERN = re.compile(r'(\d+)\s*$')
-    _NUMBERS_PATTERN = re.compile(r'\d+')
+    遵循依赖倒置原则（DIP），通过接口依赖服务，不依赖具体实现。
+    遵循单一职责原则（SRP），只负责协调业务流程。
+    """
 
     def __init__(
         self,
         cfg: AppConfig,
-        binder: GameBinder,
-        watcher: ProcessWatcher,
-        capture: CaptureService,
-        ocr: IOcrEngine,
-        overlay: OverlayService,
+        binder: IGameBinder,
+        watcher: IProcessWatcher,
+        capture: ICaptureService,
+        ocr: IOcrService,
+        overlay: IOverlayService,
+        text_parser: TextParserService,
+        region_calculator: RegionCalculatorService,
     ):
+        """初始化控制器
+
+        Args:
+            cfg: 应用配置
+            binder: 游戏绑定器接口
+            watcher: 进程监视器接口
+            capture: 截图服务接口
+            ocr: OCR服务接口
+            overlay: Overlay服务接口
+            text_parser: 文本解析领域服务
+            region_calculator: 区域计算领域服务
+        """
         self._cfg = cfg
         self._binder = binder
         self._watcher = watcher
         self._capture = capture
         self._ocr = ocr
         self._overlay = overlay
+        self._text_parser = text_parser
+        self._region_calculator = region_calculator
         self._ui = None
 
     def attach_ui(self, ui):
+        """附加UI到控制器
+
+        Args:
+            ui: UI实例
+        """
         self._ui = ui
 
     def _debug_log(self, *args, **kwargs) -> None:
@@ -56,10 +74,12 @@ class AppController:
             print(*args, **kwargs)
 
     def on_window_shown(self):
+        """窗口显示后的初始化"""
         self._ensure_bound_or_exit()
         self._schedule_watch()
 
     def _ensure_bound_or_exit(self):
+        """确保绑定游戏或退出"""
         while True:
             if self._binder.try_bind():
                 self._ui.set_bind_state(self._binder.bound)
@@ -67,20 +87,21 @@ class AppController:
 
             retry = self._ui.ask_bind_retry_or_exit()
             if not retry:
-                self._overlay.close()  # 关闭overlay
+                self._overlay.close()
                 self._ui.close()
                 return
 
     def _schedule_watch(self):
+        """安排窗口监视任务"""
         def tick():
             bound = self._binder.bound
             if bound:
                 if not self._binder.is_bound_hwnd_valid():
-                    self._overlay.close()  # 关闭overlay
+                    self._overlay.close()
                     self._ui.close()
                     return
                 if not self._watcher.is_alive(bound):
-                    self._overlay.close()  # 关闭overlay
+                    self._overlay.close()
                     self._ui.close()
                     return
             self._ui.schedule(self._watcher.interval_ms, tick)
@@ -88,6 +109,16 @@ class AppController:
         self._ui.schedule(self._watcher.interval_ms, tick)
 
     def on_detect_click(self):
+        """处理识别点击事件
+
+        流程：
+        1. 验证绑定状态
+        2. 计算识别区域
+        3. 截取合并区域
+        4. OCR识别
+        5. 解析结果
+        6. 更新UI
+        """
         bound = self._binder.bound
         if not bound:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
@@ -96,19 +127,30 @@ class AppController:
         # 获取窗口client区域大小
         client_x, client_y, client_width, client_height = get_client_rect_in_screen(bound.hwnd)
 
-        # 根据分辨率自适应计算识别区域
-        balance_region, item_regions = get_regions_for_resolution(client_width, client_height)
+        # 根据分辨率自适应计算识别区域（使用领域服务）
+        balance_region, item_regions = self._region_calculator.calculate_for_resolution(
+            client_width, client_height
+        )
 
-        # 计算包含所有区域的合并区域
-        combined_region = get_combined_region(balance_region, item_regions)
+        # 计算包含所有区域的合并区域（使用领域服务）
+        combined_region = self._region_calculator.calculate_combined_region(
+            balance_region, *item_regions
+        )
 
-        self._debug_log(f"\n[OCR优化] 合并区域: x={combined_region['x']}, y={combined_region['y']}, width={combined_region['width']}, height={combined_region['height']}")
+        self._debug_log(f"\n[OCR优化] 合并区域: x={combined_region.x}, y={combined_region.y}, "
+                        f"width={combined_region.width}, height={combined_region.height}")
         self._debug_log(f"[OCR优化] 窗口分辨率: {client_width}x{client_height}")
-        self._debug_log(f"[OCR优化] 包含区域: 余额区域({balance_region['name']}) + {len(item_regions)}个物品区域")
+        self._debug_log(f"[OCR优化] 包含区域: 余额区域({balance_region.name}) + {len(item_regions)}个物品区域")
 
         # 截取合并区域（1次截图）
         combined_out_path = ProjectPaths.get_capture_path("last_combined.png")
-        cap = self._capture.capture_region_once(bound.hwnd, combined_out_path, combined_region, timeout_sec=2.5, preprocess=False)
+        cap = self._capture.capture_region(
+            bound.hwnd,
+            combined_out_path,
+            combined_region.get_bounding_box(),
+            timeout_sec=2.5,
+            preprocess=False
+        )
 
         if not cap.ok or not cap.path:
             self._ui.show_info("截图失败，无法识别。")
@@ -134,27 +176,27 @@ class AppController:
             # 遍历所有识别到的文字块
             for word in r.words:
                 # 计算文字块在合并区域中的绝对位置
-                word_x = word.x + combined_region['x']
-                word_y = word.y + combined_region['y']
+                word_x = word.x + combined_region.x
+                word_y = word.y + combined_region.y
 
                 # 检查是否在余额区域内
-                if self._point_in_region(word_x, word_y, word.width, word.height, balance_region):
+                if balance_region.contains_center(word_x, word_y, word.width, word.height):
                     balance_text = word.text
-                    balance_value = self._extract_balance(balance_text)
+                    balance_value = self._text_parser.extract_balance(balance_text)
 
                     self._debug_log(f"[OCR优化] 文字块归属余额: {repr(balance_text)} -> 余额: {balance_value}")
                 else:
                     # 检查是否在某个物品区域内
                     for item_idx, item_region in enumerate(item_regions):
-                        if self._point_in_region(word_x, word_y, word.width, word.height, item_region):
+                        if item_region.contains_center(word_x, word_y, word.width, word.height):
                             # 收集该物品区域的所有文字块
                             item_results.append({
                                 'index': item_idx,
                                 'text': word.text,
-                                'region_name': item_region['name']
+                                'region_name': item_region.name
                             })
 
-                            self._debug_log(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region['name']}): {repr(word.text)}")
+                            self._debug_log(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region.name}): {repr(word.text)}")
                             break
 
         # 更新UI余额
@@ -171,38 +213,13 @@ class AppController:
             self._overlay.create_overlay(bound.hwnd)
 
         # 在overlay上显示物品识别区域边框
-        self._overlay.show_regions(item_regions)
+        item_regions_dict = [region.get_bounding_box() for region in item_regions]
+        self._overlay.show_regions(item_regions_dict)
 
         # 批量添加物品结果到表格
         self._add_item_results_batch(item_results, item_regions)
 
-    def _point_in_region(self, x: int, y: int, width: int, height: int, region: dict[str, Any]) -> bool:
-        """判断点/矩形是否在区域内
-
-        Args:
-            x: 文字块左上角x坐标
-            y: 文字块左上角y坐标
-            width: 文字块宽度
-            height: 文字块高度
-            region: 区域定义 {x, y, width, height}
-
-        Returns:
-            是否在区域内
-        """
-        # 计算文字块的中心点
-        center_x = x + width / 2
-        center_y = y + height / 2
-
-        # 判断中心点是否在区域内
-        region_x = region['x']
-        region_y = region['y']
-        region_right = region_x + region['width']
-        region_bottom = region_y + region['height']
-
-        return (region_x <= center_x <= region_right and
-                region_y <= center_y <= region_bottom)
-
-    def _add_item_results_batch(self, item_results: list[dict], item_regions: list[dict[str, Any]]):
+    def _add_item_results_batch(self, item_results: list[dict], item_regions: list[Region]):
         """批量添加物品识别结果到表格
 
         Args:
@@ -225,70 +242,22 @@ class AppController:
             else:
                 combined_text = "--"
 
-            self._debug_log(f"[物品识别] 区域 {idx + 1} ({region['name']}): 合并文本 = {repr(combined_text)}")
+            self._debug_log(f"[物品识别] 区域 {idx + 1} ({region.name}): 合并文本 = {repr(combined_text)}")
 
-            # 解析物品信息
-            item_name, item_quantity, item_price = self._parse_item_info(combined_text)
-            self._ui.add_item_result(idx + 1, region['name'], item_name, item_quantity, item_price)
-
-    def _parse_item_info(self, text: str) -> tuple[str, str, str]:
-        """解析物品信息，返回 (名称, 数量, 价格)"""
-        if text == "--":
-            return "--", "--", "--"
-
-        # 将换行符替换为空格，并压缩连续空格
-        text = ' '.join(text.split())
-
-        # 去掉开头的 TUFF 或 STUFF 标记（使用预编译正则）
-        text = self._STUFF_PATTERN.sub('', text)
-
-        # 检查是否已售罄
-        if '已售罄' in text:
-            # 提取物品名称（已售罄之前的部分）
-            name = text.replace('已售罄', '').strip()
-            return name, '已售罄', '0'
-
-        # 查找 "X" 后面的数字作为数量（使用预编译正则）
-        quantity_match = self._QUANTITY_PATTERN.search(text)
-        if quantity_match:
-            quantity = quantity_match.group(1)
-            # 去掉数量部分，获取物品名称和价格
-            remaining = self._QUANTITY_PATTERN.sub('', text).strip()
-        else:
-            # 没有显式数量，默认为1
-            quantity = '1'
-            remaining = text
-
-        # 从剩余文本中提取最后一个数字作为价格（使用预编译正则）
-        price_match = self._PRICE_PATTERN.search(remaining)
-        if price_match:
-            price = price_match.group(1)
-            # 去掉价格，获取物品名称
-            name = self._PRICE_PATTERN.sub('', remaining).strip()
-        else:
-            # 没有找到价格
-            price = '--'
-            name = remaining.strip()
-
-        return name, quantity, price
-
-    def _extract_balance(self, text: str) -> str:
-        """从识别的文本中提取余额数字"""
-        # 匹配连续的数字（使用预编译正则）
-        numbers = self._NUMBERS_PATTERN.findall(text)
-        if numbers:
-            # 取最长的数字串（最可能是余额）
-            balance = max(numbers, key=len)
-            # 格式化余额（添加千分位分隔符）
-            try:
-                num = int(balance)
-                return f"{num:,}"
-            except ValueError:
-                return balance
-        return "--"
+            # 解析物品信息（使用领域服务）
+            item_name, item_quantity, item_price = self._text_parser.parse_item_info(combined_text)
+            self._ui.add_item_result(idx + 1, region.name, item_name, item_quantity, item_price)
 
     def update_config(self, ocr_config, watch_interval_ms: int) -> bool:
-        """更新配置"""
+        """更新配置
+
+        Args:
+            ocr_config: 新的OCR配置
+            watch_interval_ms: 新的监视间隔
+
+        Returns:
+            是否更新成功
+        """
         try:
             from core.config import AppConfig, OcrConfig
             from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
@@ -309,7 +278,7 @@ class AppController:
             # 更新监控间隔
             self._watcher.interval_ms = watch_interval_ms
 
-            # 重新创建OCR引擎（重要：确保新配置生效，包括debug_mode）
+            # 重新创建OCR引擎（确保新配置生效，包括debug_mode）
             ocr_cfg = BaiduOcrConfig(
                 api_key=ocr_config.api_key,
                 secret_key=ocr_config.secret_key,
@@ -326,5 +295,9 @@ class AppController:
             return False
 
     def get_config(self):
-        """获取当前配置"""
+        """获取当前配置
+
+        Returns:
+            当前配置对象
+        """
         return self._cfg
