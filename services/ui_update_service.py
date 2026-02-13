@@ -9,17 +9,19 @@ logger = get_logger(__name__)
 class UIUpdateService:
     """UI更新服务 - 封装UI更新逻辑"""
 
-    def __init__(self, text_parser, price_calculator, item_price_service):
+    def __init__(self, text_parser, price_calculator, item_price_service, controller=None):
         """初始化UI更新服务
 
         Args:
             text_parser: 文本解析服务
             price_calculator: 价格计算服务
             item_price_service: 物品价格服务
+            controller: 控制器（可选，用于记录兑换日志）
         """
         self._text_parser = text_parser
         self._price_calculator = price_calculator
         self._item_price_service = item_price_service
+        self._controller = controller
         self._cfg = None
 
     def set_config(self, cfg):
@@ -237,6 +239,21 @@ class UIUpdateService:
                         profit_value = result.profit_value
                         # 决定显示的价格：如果开启税率计算，显示税后价格；否则显示原始转换价
                         display_price = result.taxed_converted_price if enable_tax_calculation else result.converted_price
+
+                        # 添加兑换记录（仅在控制器可用时）
+                        if self._controller:
+                            try:
+                                self._controller.add_exchange_log(
+                                    item_name=item_name,
+                                    quantity=item_quantity,
+                                    original_price=result.original_price,
+                                    converted_price=display_price,
+                                    profit=profit_value,
+                                    status="完成"
+                                )
+                            except Exception as e:
+                                logger.error(f"添加兑换记录失败: {e}")
+
                         if profit_value > 0:
                             display_text = f"{item_name}\n{item_quantity}X{unit_price_display:.4f}={result.original_price:.4f}({display_price:.4f})\n盈利：{profit_value:.4f}火"
                             color = "#00FF00"  # 绿色（盈利）

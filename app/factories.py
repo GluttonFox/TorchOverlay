@@ -79,7 +79,12 @@ class AppFactory:
         ui_update_service = self.create_ui_update_service(text_parser, price_calculator, item_price_service)
         state_manager = self.create_state_manager()
         event_bus = self.create_event_bus()
-        return AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay, text_parser=text_parser, region_calculator=region_calculator, item_price_service=item_price_service, price_update_service=price_update_service, price_calculator=price_calculator, recognition_flow=recognition_flow, state_manager=state_manager, event_bus=event_bus, ui_update_service=ui_update_service)
+        controller = AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay, text_parser=text_parser, region_calculator=region_calculator, item_price_service=item_price_service, price_update_service=price_update_service, price_calculator=price_calculator, recognition_flow=recognition_flow, state_manager=state_manager, event_bus=event_bus, ui_update_service=ui_update_service)
+
+        # 将控制器引用传递给 UIUpdateService（用于记录兑换日志）
+        ui_update_service._controller = controller
+
+        return controller
 
     def create_text_parser_service(self) -> TextParserService:
         """创建文本解析服务"""

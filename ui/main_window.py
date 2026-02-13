@@ -6,6 +6,7 @@ from datetime import datetime
 from core.config import AppConfig, OcrConfig
 from domain.models import BoundGame
 from ui.settings_window import SettingsWindow
+from ui.exchange_log_window import ExchangeLogWindow
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -69,7 +70,15 @@ class MainWindow:
             state="disabled",
             command=self._controller.on_detect_click
         )
-        self.btn_detect.place(x=16, y=140, width=175, height=30)
+        self.btn_detect.place(x=16, y=140, width=110, height=30)
+
+        self.btn_exchange_log = tk.Button(
+            self.root,
+            text="📋 兑换日志",
+            font=("Segoe UI", 9),
+            command=self._open_exchange_log
+        )
+        self.btn_exchange_log.place(x=131, y=140, width=110, height=30)
 
         self.btn_settings = tk.Button(
             self.root,
@@ -215,6 +224,14 @@ class MainWindow:
         # 每次打开前从controller获取最新配置
         latest_cfg = self._controller.get_config()
         SettingsWindow(self.root, latest_cfg, self._save_config_callback)
+
+    def _open_exchange_log(self):
+        """打开兑换日志窗口"""
+        try:
+            ExchangeLogWindow(self.root)
+        except Exception as e:
+            logger.error(f"打开兑换日志窗口失败: {e}")
+            messagebox.showerror("错误", f"打开兑换日志失败：{e}")
 
     def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
         """保存配置回调"""

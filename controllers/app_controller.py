@@ -401,3 +401,47 @@ class AppController:
             当前配置对象
         """
         return self._cfg
+
+    def add_exchange_log(self, item_name: str, quantity: str, original_price: float,
+                         converted_price: float, profit: float, status: str = "完成"):
+        """添加兑换记录到日志
+
+        Args:
+            item_name: 物品名称
+            quantity: 数量
+            original_price: 原价
+            converted_price: 转换价
+            profit: 盈亏
+            status: 状态
+        """
+        try:
+            import json
+            import os
+
+            log_data = {
+                'item_name': item_name,
+                'quantity': quantity,
+                'original_price': original_price,
+                'converted_price': converted_price,
+                'profit': profit,
+                'status': status
+            }
+
+            log_file = os.path.join(os.path.dirname(__file__), '..', 'exchange_log.json')
+
+            # 加载现有日志
+            logs = []
+            if os.path.exists(log_file):
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+
+            # 添加新日志
+            logs.append(log_data)
+
+            # 保存到文件
+            with open(log_file, 'w', encoding='utf-8') as f:
+                json.dump(logs, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"添加兑换记录: {item_name} x{quantity}, 盈亏={profit:.4f}")
+        except Exception as e:
+            logger.error(f"添加兑换记录失败: {e}")
