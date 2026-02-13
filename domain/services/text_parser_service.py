@@ -1,18 +1,18 @@
 """文本解析领域服务 - 负责OCR文本的业务解析"""
 import re
-from typing import Tuple
 
 
 class TextParserService:
     """文本解析服务 - 从 Controller 拆分出来"""
 
     # 预编译正则表达式
-    _STUFF_PATTERN = re.compile(r'^(UFF|TUFF|STUFF|FF|F)\s*', re.IGNORECASE)
+    _STUFF_PATTERN = re.compile(r'^(UFF|TUFF|STUFF|UFH|UF|FF|F)\s*', re.IGNORECASE)
+    _PREFIX_PATTERN = re.compile(r'^(OF|R|UF|UFH|UFF|TUFF|STUFF|FF|F)\s*', re.IGNORECASE)  # 匹配各种前缀
     _QUANTITY_PATTERN = re.compile(r'[×XxⅩ✕✖☓✗]\s*(\d+)')  # 匹配各种X/乘号后面跟的数字
     _PRICE_PATTERN = re.compile(r'(\d+)\s*$')
     _NUMBERS_PATTERN = re.compile(r'\d+')
 
-    def parse_item_info(self, text: str) -> Tuple[str, str, str]:
+    def parse_item_info(self, text: str) -> tuple[str, str, str]:
         """解析物品信息，返回 (名称, 数量, 价格)
 
         Args:
@@ -27,8 +27,8 @@ class TextParserService:
         # 将换行符替换为空格，并压缩连续空格
         text = ' '.join(text.split())
 
-        # 去掉开头的 TUFF 或 STUFF 标记（使用预编译正则）
-        text = self._STUFF_PATTERN.sub('', text)
+        # 去掉开头的各种前缀标记（使用预编译正则）
+        text = self._PREFIX_PATTERN.sub('', text)
 
         # 检查是否已售罄
         if '已售罄' in text:

@@ -2,6 +2,13 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+# 导入OverlayTextItem类型，用于类型提示
+try:
+    from services.overlay.overlay_service import OverlayTextItem
+except ImportError:
+    # 如果导入失败，使用Any作为后备
+    OverlayTextItem = Any
+
 
 class IOverlayService(ABC):
     """Overlay服务接口"""
@@ -28,7 +35,7 @@ class IOverlayService(ABC):
         pass
 
     @abstractmethod
-    def show_texts(self, text_items: list[Any]) -> None:
+    def show_texts(self, text_items: list[OverlayTextItem]) -> None:
         """在覆盖层上显示文本
 
         Args:

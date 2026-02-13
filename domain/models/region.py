@@ -40,7 +40,7 @@ class Region:
         center_y = y + height / 2
         return self.contains_point(center_x, center_y)
 
-    def get_bounding_box(self) -> dict:
+    def get_bounding_box(self) -> dict[str, int]:
         """获取边界框字典
 
         Returns:

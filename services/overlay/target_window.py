@@ -1,6 +1,6 @@
 import win32gui
 
-def get_client_rect_in_screen(hwnd: int):
+def get_client_rect_in_screen(hwnd: int) -> tuple[int, int, int, int]:
     """
     返回 (x, y, w, h) —— 目标窗口 client 区域在屏幕坐标系下的位置和大小
     """

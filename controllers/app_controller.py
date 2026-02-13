@@ -4,6 +4,8 @@ from typing import Any
 from core.config import AppConfig
 from core.paths import ProjectPaths
 from core.logger import get_logger
+from core.event_bus import Events, EventBus
+from core.state_manager import StateManager
 from services.interfaces import (
     IGameBinder,
     IProcessWatcher,
@@ -12,6 +14,9 @@ from services.interfaces import (
     IOverlayService,
 )
 from services.overlay.target_window import get_client_rect_in_screen
+from services.price_calculator_service import PriceCalculatorService
+from services.recognition_flow_service import RecognitionFlowService
+from services.ui_update_service import UIUpdateService
 from domain.services import TextParserService, RegionCalculatorService
 from domain.models import Region
 
@@ -37,6 +42,11 @@ class AppController:
         region_calculator: RegionCalculatorService,
         item_price_service,
         price_update_service,
+        price_calculator: PriceCalculatorService,
+        recognition_flow: RecognitionFlowService,
+        state_manager: StateManager,
+        event_bus: EventBus,
+        ui_update_service: UIUpdateService,
     ):
         """初始化控制器
 
@@ -51,6 +61,11 @@ class AppController:
             region_calculator: 区域计算领域服务
             item_price_service: 物品价格服务
             price_update_service: 物价更新服务
+            price_calculator: 价格计算服务
+            recognition_flow: 识别流程服务
+            state_manager: 状态管理器
+            event_bus: 事件总线
+            ui_update_service: UI更新服务
         """
         self._cfg = cfg
         self._binder = binder
@@ -62,15 +77,23 @@ class AppController:
         self._region_calculator = region_calculator
         self._item_price_service = item_price_service
         self._price_update_service = price_update_service
+        self._price_calculator = price_calculator
+        self._recognition_flow = recognition_flow
+        self._state_manager = state_manager
+        self._event_bus = event_bus
+        self._ui_update_service = ui_update_service
+        self._ui_update_service.set_config(cfg)
         self._ui = None
 
-    def attach_ui(self, ui):
+    def attach_ui(self, ui) -> None:
         """附加UI到控制器
 
         Args:
             ui: UI实例
         """
         self._ui = ui
+        # 更新UI窗口状态
+        self._state_manager.set_ui_window_visible(True)
 
     def _debug_log(self, *args, **kwargs) -> None:
         """调试日志（仅在debug模式下输出）
@@ -82,12 +105,12 @@ class AppController:
         if self._cfg.ocr.debug_mode:
             logger.debug(*args, **kwargs)
 
-    def on_window_shown(self):
+    def on_window_shown(self) -> None:
         """窗口显示后的初始化"""
         self._ensure_bound_or_exit()
         self._schedule_watch()
 
-    def _ensure_bound_or_exit(self):
+    def _ensure_bound_or_exit(self) -> None:
         """确保绑定游戏或退出"""
         while True:
             if self._binder.try_bind():
@@ -100,7 +123,7 @@ class AppController:
                 self._ui.close()
                 return
 
-    def _schedule_watch(self):
+    def _schedule_watch(self) -> None:
         """安排窗口监视任务"""
         def tick():
             bound = self._binder.bound
@@ -117,111 +140,77 @@ class AppController:
 
         self._ui.schedule(self._watcher.interval_ms, tick)
 
-    def on_detect_click(self):
+    def on_detect_click(self) -> None:
         """处理识别点击事件
 
         流程：
         1. 验证绑定状态
-        2. 计算识别区域
-        3. 截取合并区域
-        4. OCR识别
-        5. 解析结果
-        6. 更新UI
+        2. 执行识别流程
+        3. 更新UI
         """
         bound = self._binder.bound
         if not bound:
             self._ui.show_info("未绑定游戏窗口，无法识别。")
             return
 
+        # 发布识别开始事件
+        self._event_bus.publish(Events.RECOGNITION_STARTED, hwnd=bound.hwnd)
+
+        # 开始识别状态
+        self._state_manager.start_recognition()
+
         # 获取窗口client区域大小
         client_x, client_y, client_width, client_height = get_client_rect_in_screen(bound.hwnd)
 
-        # 根据分辨率自适应计算识别区域（使用领域服务）
-        balance_region, item_regions = self._region_calculator.calculate_for_resolution(
-            client_width, client_height
+        # 执行识别流程
+        result = self._recognition_flow.execute_recognition_flow(
+            hwnd=bound.hwnd,
+            client_width=client_width,
+            client_height=client_height
         )
 
-        # 计算包含所有区域的合并区域（使用领域服务）
-        combined_region = self._region_calculator.calculate_combined_region(
-            balance_region, *item_regions
-        )
-
-        self._debug_log(f"\n[OCR优化] 合并区域: x={combined_region.x}, y={combined_region.y}, "
-                        f"width={combined_region.width}, height={combined_region.height}")
-        self._debug_log(f"[OCR优化] 窗口分辨率: {client_width}x{client_height}")
-        self._debug_log(f"[OCR优化] 包含区域: 余额区域({balance_region.name}) + {len(item_regions)}个物品区域")
-
-        # 截取合并区域（1次截图）
-        combined_out_path = ProjectPaths.get_capture_path("last_combined.png")
-        cap = self._capture.capture_region(
-            bound.hwnd,
-            combined_out_path,
-            combined_region.get_bounding_box(),
-            timeout_sec=2.5,
-            preprocess=False
-        )
-
-        if not cap.ok or not cap.path:
-            self._ui.show_info("截图失败，无法识别。")
+        if not result['success']:
+            self._state_manager.complete_recognition(success=False, error=result['error'])
+            self._event_bus.publish(Events.RECOGNITION_FAILED, error=result['error'])
+            self._ui.show_info(result['error'])
             return
 
-        self._debug_log(f"[OCR优化] 截图已保存到: {combined_out_path}")
-
-        # OCR识别（1次调用）
-        r = self._ocr.recognize(cap.path)
-        if not r.ok:
-            self._ui.show_info(f"OCR识别失败: {r.error}")
-            return
-
-        self._debug_log(f"[OCR优化] 原始识别文本: {repr(r.text)}")
-        if r.words:
-            self._debug_log(f"[OCR优化] 识别到 {len(r.words)} 个文字块")
-
-        # 根据位置信息分配结果
-        balance_value = "--"
-        item_results = []
-
-        if r.words:
-            # 遍历所有识别到的文字块
-            for word in r.words:
-                # 计算文字块在合并区域中的绝对位置
-                word_x = word.x + combined_region.x
-                word_y = word.y + combined_region.y
-
-                # 检查是否在余额区域内
-                if balance_region.contains_center(word_x, word_y, word.width, word.height):
-                    balance_text = word.text
-                    balance_value = self._text_parser.extract_balance(balance_text)
-
-                    self._debug_log(f"[OCR优化] 文字块归属余额: {repr(balance_text)} -> 余额: {balance_value}")
-                else:
-                    # 检查是否在某个物品区域内
-                    for item_idx, item_region in enumerate(item_regions):
-                        if item_region.contains_center(word_x, word_y, word.width, word.height):
-                            # 收集该物品区域的所有文字块
-                            item_results.append({
-                                'index': item_idx,
-                                'text': word.text,
-                                'region_name': item_region.name
-                            })
-
-                            self._debug_log(f"[OCR优化] 文字块归属物品区域{item_idx + 1}({item_region.name}): {repr(word.text)}")
-                            break
+        balance_value = result['balance_value']
+        item_results = result['item_results']
 
         # 更新UI余额
         self._ui.update_balance(balance_value)
 
-        if balance_value == "--":
-            self._debug_log(f"\n[OCR优化] 余额识别失败")
+        if balance_value == '--':
+            self._debug_log("[识别流程] 余额识别失败")
 
         # 创建overlay显示区域边框
         if not self._overlay.is_visible():
+            self._debug_log("[Overlay] 创建Overlay窗口")
             self._overlay.create_overlay(bound.hwnd)
+        else:
+            self._debug_log("[Overlay] Overlay窗口已存在")
+
+        # 在overlay上显示物品识别结果
+        # 获取物品区域（从识别流程服务返回或重新计算）
+        balance_region, item_regions = self._region_calculator.calculate_for_resolution(
+            client_width, client_height
+        )
+
+        self._debug_log(f"[Overlay] 物品区域数量: {len(item_regions)}, 识别结果数量: {len(item_results)}")
+
+        # 添加物品结果到表格（如果UI支持）
+        self._add_item_results_batch(item_results, item_regions)
 
         # 在overlay上显示物品识别结果
         self._display_item_results_on_overlay(item_results, item_regions)
 
-    def on_update_price_click(self):
+        # 完成识别状态
+        self._state_manager.complete_recognition(success=True)
+        # 发布识别完成事件
+        self._event_bus.publish(Events.RECOGNITION_COMPLETED, balance=balance_value, items_count=len(item_results))
+
+    def on_update_price_click(self) -> None:
         """处理更新物价按钮点击事件"""
         if not self._price_update_service.can_update():
             last_update = self._price_update_service.get_last_update_time()
@@ -232,12 +221,27 @@ class AppController:
                 self._ui.show_info("距离上次更新不到1小时。")
             return
 
+        # 发布价格更新开始事件
+        self._event_bus.publish(Events.PRICE_UPDATE_STARTED)
+
+        # 开始价格更新状态
+        self._state_manager.start_price_update()
+
         # 禁用按钮，防止重复点击
         self._ui.btn_update_price.config(state="disabled", text="更新中...")
 
         # 在UI线程中异步执行更新
         def do_update():
             success, message = self._price_update_service.update_prices()
+
+            # 完成价格更新状态
+            self._state_manager.complete_price_update(success=success, message=message)
+
+            # 发布价格更新完成事件
+            if success:
+                self._event_bus.publish(Events.PRICE_UPDATE_COMPLETED, message=message)
+            else:
+                self._event_bus.publish(Events.PRICE_UPDATE_FAILED, message=message)
 
             # 重新启用按钮
             self._ui.btn_update_price.config(state="normal", text="更新物价")
@@ -255,7 +259,7 @@ class AppController:
 
         self._ui.schedule(0, do_update)
 
-    def _reload_item_prices(self):
+    def _reload_item_prices(self) -> None:
         """重新加载物品价格数据"""
         try:
             import importlib
@@ -275,261 +279,58 @@ class AppController:
         except Exception as e:
             self._debug_log(f"重新加载物品价格失败: {e}")
 
-    def _add_item_results_batch(self, item_results: list[dict], item_regions: list[Region]):
+    def _add_item_results_batch(self, item_results: list[dict], item_regions: list[Region]) -> None:
         """批量添加物品识别结果到表格
 
         Args:
             item_results: 文字块结果列表 [{'index', 'text', 'region_name'}, ...]
             item_regions: 物品区域列表
         """
-        # 按区域索引分组文字块
-        grouped = {}
-        for result in item_results:
-            idx = result['index']
-            if idx not in grouped:
-                grouped[idx] = []
-            grouped[idx].append(result['text'])
+        # 使用UI更新服务准备表格结果
+        table_results = self._ui_update_service.prepare_table_results(
+            item_results, item_regions
+        )
 
-        # 为每个区域生成结果
-        for idx, region in enumerate(item_regions):
-            if idx in grouped:
-                # 合并该区域的所有文字块
-                combined_text = ' '.join(grouped[idx])
-            else:
-                combined_text = "--"
-
-            self._debug_log(f"[物品识别] 区域 {idx + 1} ({region.name}): 合并文本 = {repr(combined_text)}")
-
-            # 解析物品信息（使用领域服务）
-            item_name, item_quantity, item_price = self._text_parser.parse_item_info(combined_text)
-
-            # 计算价格相关信息
-            original_price = "--"
-            converted_price = "--"
-            profit_ratio = "--"
-
-            if item_name != "--" and item_name != "已售罄":
-                # 获取神威辉石单价
-                gem_price = self._item_price_service.get_price_by_name("神威辉石")
-
-                # 特殊处理奥秘辉石
-                if "奥秘辉石" in item_name:
-                    self._debug_log(f"[奥秘辉石] 检测到奥秘辉石: {item_name}, 当前模式: {self._cfg.mystery_gem_mode}")
-                    try:
-                        quantity_int = int(item_quantity)
-
-                        if gem_price is not None and gem_price > 0:
-                            import random
-
-                            # 判断是小奥秘还是大奥秘
-                            if "小" in item_name:
-                                # 小奥秘辉石：50-100神威辉石
-                                if self._cfg.mystery_gem_mode == "min":
-                                    gem_count = 50
-                                elif self._cfg.mystery_gem_mode == "max":
-                                    gem_count = 100
-                                else:  # random
-                                    gem_count = random.randint(50, 100)
-                            else:
-                                # 大奥秘辉石：100-900神威辉石
-                                if self._cfg.mystery_gem_mode == "min":
-                                    gem_count = 100
-                                elif self._cfg.mystery_gem_mode == "max":
-                                    gem_count = 900
-                                else:  # random
-                                    gem_count = random.randint(100, 900)
-
-                            self._debug_log(f"[奥秘辉石] 计算方式: gem_count={gem_count}, quantity={quantity_int}, gem_price={gem_price}")
-
-                            # 计算原始价格（神威辉石数量 × 数量 × 神威辉石单价）
-                            original_price_value = gem_count * quantity_int * gem_price
-                            original_price = f"{original_price_value:.2f}"
-                            self._debug_log(f"[奥秘辉石] 原始价格: {original_price}")
-
-                            # 计算转换价格（物品价格 × 神威辉石单价）
-                            if item_price != "--":
-                                try:
-                                    price_int = int(item_price)
-                                    if price_int > 0:
-                                        converted_price_value = price_int * gem_price
-                                        converted_price = f"{converted_price_value:.2f}"
-                                        self._debug_log(f"[奥秘辉石] 转换价格: {converted_price}")
-
-                                        # 计算盈亏量（原始价格 - 转换价格）
-                                        profit_ratio_value = original_price_value - converted_price_value
-                                        profit_ratio = f"{profit_ratio_value:.2f}"
-                                        self._debug_log(f"[奥秘辉石] 盈亏量: {profit_ratio}")
-                                except ValueError:
-                                    pass
-                    except ValueError:
-                        pass
-                else:
-                    # 获取物品单价
-                    unit_price = self._item_price_service.get_price_by_name(item_name)
-                    if unit_price is not None:
-                        # 计算原始价格（单价 × 数量）
-                        try:
-                            quantity_int = int(item_quantity)
-                            original_price_value = quantity_int * unit_price
-                            original_price = f"{original_price_value:.2f}"
-
-                            # 计算转换价格（物品价格 × 神威辉石单价）
-                            if gem_price is not None and gem_price > 0:
-                                if item_price != "--":
-                                    try:
-                                        price_int = int(item_price)
-                                        if price_int > 0:
-                                            converted_price_value = price_int * gem_price
-                                            converted_price = f"{converted_price_value:.2f}"
-
-                                            # 计算盈亏量（原始价格 - 转换价格）
-                                            profit_ratio_value = original_price_value - converted_price_value
-                                            profit_ratio = f"{profit_ratio_value:.2f}"
-                                    except ValueError:
-                                        pass
-                        except ValueError:
-                            pass
-
-            self._ui.add_item_result(
-                idx + 1, region.name, item_name, item_quantity, item_price,
-                original_price, converted_price, profit_ratio
+        # 添加结果到UI
+        for result in table_results:
+            self._debug_log(
+                f"[物品识别] 区域 {result['index']} ({result['region_name']}): "
+                f"物品={result['item_name']}, 数量={result['item_quantity']}"
             )
 
-    def _display_item_results_on_overlay(self, item_results: list[dict], item_regions: list[Region]):
+            self._ui.add_item_result(
+                result['index'],
+                result['region_name'],
+                result['item_name'],
+                result['item_quantity'],
+                result['item_price'],
+                result['original_price'],
+                result['converted_price'],
+                result['profit_ratio']
+            )
+
+    def _display_item_results_on_overlay(self, item_results: list[dict], item_regions: list[Region]) -> None:
         """在overlay上显示物品识别结果
 
         Args:
             item_results: 物品识别结果列表
             item_regions: 物品区域列表
         """
-        # 按区域索引分组文字块
-        grouped = {}
-        for result in item_results:
-            idx = result['index']
-            if idx not in grouped:
-                grouped[idx] = []
-            grouped[idx].append(result['text'])
+        self._debug_log(f"[Overlay] 开始准备显示文本，物品结果数: {len(item_results)}, 区域数: {len(item_regions)}")
 
-        # 准备要在overlay上显示的文本项
-        from services.overlay.overlay_service import OverlayTextItem
-        text_items = []
+        # 使用UI更新服务准备overlay文本项
+        text_items = self._ui_update_service.prepare_overlay_text_items(
+            item_results, item_regions
+        )
 
-        # 为每个区域生成显示文本
-        for idx, region in enumerate(item_regions):
-            if idx in grouped:
-                # 合并该区域的所有文字块
-                combined_text = ' '.join(grouped[idx])
-            else:
-                combined_text = "--"
-
-            # 解析物品信息
-            item_name, item_quantity, item_price = self._text_parser.parse_item_info(combined_text)
-
-            display_text = ""
-            color = "#00FF00"  # 默认绿色
-
-            if item_name != "--" and item_name != "已售罄":
-                # 计算价格信息（简化的显示文本）
-                gem_price = self._item_price_service.get_price_by_name("神威辉石")
-
-                # 特殊处理奥秘辉石
-                if "奥秘辉石" in item_name:
-                    try:
-                        quantity_int = int(item_quantity)
-
-                        if gem_price is not None and gem_price > 0:
-                            import random
-
-                            # 判断是小奥秘还是大奥秘
-                            if "小" in item_name:
-                                if self._cfg.mystery_gem_mode == "min":
-                                    gem_count = 50
-                                elif self._cfg.mystery_gem_mode == "max":
-                                    gem_count = 100
-                                else:
-                                    gem_count = random.randint(50, 100)
-                            else:
-                                if self._cfg.mystery_gem_mode == "min":
-                                    gem_count = 100
-                                elif self._cfg.mystery_gem_mode == "max":
-                                    gem_count = 900
-                                else:
-                                    gem_count = random.randint(100, 900)
-
-                            # 计算盈亏量
-                            original_price_value = gem_count * quantity_int * gem_price
-                            # 奥秘辉石的获取到的价格就是总神威辉石数量
-                            gem_total = gem_count * quantity_int
-                            if item_price != "--":
-                                try:
-                                    price_int = int(item_price)
-                                    if price_int > 0:
-                                        converted_price_value = price_int * gem_price
-                                        total_price = quantity_int * price_int
-                                        profit_value = original_price_value - converted_price_value
-                                        if profit_value > 0:
-                                            display_text = f"{item_name}\n{item_quantity}X{gem_total:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n盈利：{profit_value:.4f}火"
-                                            color = "#00FF00"  # 绿色（盈利）
-                                        elif profit_value < 0:
-                                            display_text = f"{item_name}\n{item_quantity}X{gem_total:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n亏损：{abs(profit_value):.4f}火"
-                                            color = "#FF0000"  # 红色（亏损）
-                                        else:
-                                            display_text = f"{item_name}\n{item_quantity}X{gem_total:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n持平"
-                                            color = "#FFFF00"  # 黄色（平衡）
-                                except ValueError:
-                                    pass
-                    except ValueError:
-                        pass
-                else:
-                    # 普通物品
-                    unit_price = self._item_price_service.get_price_by_name(item_name)
-                    if unit_price is not None:
-                        try:
-                            quantity_int = int(item_quantity)
-                            original_price_value = quantity_int * unit_price
-                            if gem_price is not None and gem_price > 0:
-                                if item_price != "--":
-                                    try:
-                                        price_int = int(item_price)
-                                        if price_int > 0:
-                                            converted_price_value = price_int * gem_price
-                                            total_price = quantity_int * price_int
-                                            profit_value = original_price_value - converted_price_value
-                                            if profit_value > 0:
-                                                display_text = f"{item_name}\n{item_quantity}X{unit_price:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n盈利：{profit_value:.4f}火"
-                                                color = "#00FF00"  # 绿色（盈利）
-                                            elif profit_value < 0:
-                                                display_text = f"{item_name}\n{item_quantity}X{unit_price:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n亏损：{abs(profit_value):.4f}火"
-                                                color = "#FF0000"  # 红色（亏损）
-                                            else:
-                                                display_text = f"{item_name}\n{item_quantity}X{unit_price:.4f}={original_price_value:.4f}({converted_price_value:.4f})\n持平"
-                                                color = "#FFFF00"  # 黄色（平衡）
-                                    except ValueError:
-                                        pass
-                        except ValueError:
-                            pass
-
-            # 创建文本项
-            if display_text:
-                # 获取区域的坐标
-                bbox = region.get_bounding_box()
-
-                # 创建文本项（显示在识别区域内）
-                text_item = OverlayTextItem(
-                    text=display_text,
-                    x=bbox['x'],
-                    y=bbox['y'],
-                    width=bbox['width'],
-                    height=bbox['height'],
-                    color=color,
-                    font_size=12,
-                    background=""
-                )
-                text_items.append(text_item)
+        self._debug_log(f"[Overlay] 准备了 {len(text_items)} 个文本项")
 
         # 在overlay上显示文本
         if text_items:
+            self._debug_log(f"[Overlay] 调用 overlay.show_texts 显示文本")
             self._overlay.show_texts(text_items)
+        else:
+            self._debug_log("[Overlay] 没有文本项可显示")
 
     def update_config(self, ocr_config, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
         """更新配置
@@ -577,12 +378,23 @@ class AppController:
             )
             self._ocr = BaiduOcrEngine(ocr_cfg)
 
+            # 更新状态管理器中的配置
+            self._state_manager.update_config({
+                'watch_interval_ms': watch_interval_ms,
+                'debug_mode': ocr_config.debug_mode,
+                'mystery_gem_mode': mystery_gem_mode,
+                'enable_tax_calculation': enable_tax_calculation,
+            })
+
+            # 更新UI更新服务的配置
+            self._ui_update_service.set_config(self._cfg)
+
             return True
         except Exception as e:
             logger.error(f"更新配置失败: {e}")
             return False
 
-    def get_config(self):
+    def get_config(self) -> AppConfig:
         """获取当前配置
 
         Returns:

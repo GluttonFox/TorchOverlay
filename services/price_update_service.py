@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 class PriceUpdateService:
     """物价更新服务"""
 
-    def __init__(self, config=None):
+    def __init__(self, config=None) -> None:
         self._api_url = "https://serverp.furtorch.heili.tech/price"
         self._update_interval_hours = 1.0  # 更新间隔（小时）
         self._last_update_time = None  # 上次更新时间戳
@@ -24,7 +24,7 @@ class PriceUpdateService:
         # 从配置加载上次更新时间
         self._load_last_update_time()
 
-    def _debug_print(self, *args, **kwargs):
+    def _debug_print(self, *args, **kwargs) -> None:
         """调试输出"""
         message = ' '.join(str(arg) for arg in args)
         logger.debug(message)
@@ -37,7 +37,7 @@ class PriceUpdateService:
         except Exception as e:
             pass  # 忽略日志写入错误
 
-    def _load_last_update_time(self):
+    def _load_last_update_time(self) -> None:
         """从配置加载上次更新时间"""
         if self._config:
             try:
@@ -54,7 +54,7 @@ class PriceUpdateService:
                 self._debug_print(f"加载更新时间失败: {e}")
                 self._last_update_time = None
 
-    def _save_last_update_time(self):
+    def _save_last_update_time(self) -> None:
         """保存上次更新时间到配置"""
         if self._config and self._last_update_time:
             try:
@@ -222,6 +222,3 @@ class PriceUpdateService:
             self._debug_print(error_msg)
             return False, error_msg
 
-    def _debug_print(self, *args, **kwargs):
-        """调试输出"""
-        print(*args, **kwargs)

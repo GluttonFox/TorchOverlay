@@ -9,7 +9,7 @@ T = TypeVar('T')
 class DIContainer:
     """依赖注入容器"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """初始化容器"""
         self._singletons: Dict[Type, Any] = {}
         self._factories: Dict[Type, Callable[[], Any]] = {}

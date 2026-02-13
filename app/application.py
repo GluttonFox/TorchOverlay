@@ -1,10 +1,10 @@
 from app.factories import AppFactory
 
 class TorchOverlayApplication:
-    def __init__(self):
+    def __init__(self) -> None:
         self._factory = AppFactory()
 
-    def run(self):
+    def run(self) -> None:
         # 1) 管理员检查与提权
         admin = self._factory.create_admin_service()
         admin.ensure_admin_or_restart()

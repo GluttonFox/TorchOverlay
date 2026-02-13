@@ -1,5 +1,4 @@
 """区域计算领域服务 - 负责识别区域的计算"""
-from typing import Tuple, List
 from domain.models.region import Region
 
 
@@ -14,7 +13,7 @@ class RegionCalculatorService:
         self,
         client_width: int,
         client_height: int
-    ) -> Tuple[Region, List[Region]]:
+    ) -> tuple[Region, list[Region]]:
         """根据分辨率计算识别区域
 
         Args:
@@ -88,7 +87,7 @@ class RegionCalculatorService:
             height=int(base_balance["height"] * scale_y)
         )
 
-    def _create_item_regions(self, scale_x: float, scale_y: float) -> List[Region]:
+    def _create_item_regions(self, scale_x: float, scale_y: float) -> list[Region]:
         """创建物品区域
 
         Args:

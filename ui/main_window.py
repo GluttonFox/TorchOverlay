@@ -113,6 +113,26 @@ class MainWindow:
         """更新余额显示"""
         self.lbl_balance.config(text=balance)
 
+    def add_item_result(self, index: int, region_name: str, item_name: str,
+                       item_quantity: str, item_price: str, original_price: str,
+                       converted_price: str, profit_ratio: str):
+        """添加物品识别结果到显示（暂时实现，后续可改为表格显示）
+
+        Args:
+            index: 索引
+            region_name: 区域名称
+            item_name: 物品名称
+            item_quantity: 数量
+            item_price: 价格
+            original_price: 原始价格
+            converted_price: 转换价格
+            profit_ratio: 利润比率
+        """
+        # 暂时在控制台输出，后续可以实现表格显示
+        logger.info(f"物品 {index} ({region_name}): {item_name} x{item_quantity}, "
+                   f"价格={item_price}, 原价={original_price}, 转换价={converted_price}, "
+                   f"利润={profit_ratio}")
+
     def update_last_update_time(self, last_update_time):
         """更新最后更新时间显示"""
         if last_update_time is None:

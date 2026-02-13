@@ -17,7 +17,7 @@ class ItemInfo:
         """检查物品信息是否有效"""
         return self.name != "--" and self.name.strip()
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """转换为字典"""
         return {
             'index': self.index,
@@ -29,7 +29,7 @@ class ItemInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'ItemInfo':
+    def from_dict(cls, data: dict[str, object]) -> 'ItemInfo':
         """从字典创建"""
         return cls(
             index=data['index'],

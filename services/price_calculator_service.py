@@ -12,6 +12,7 @@ class PriceCalculationResult:
     item_price: str
     original_price: Optional[float] = None
     converted_price: Optional[float] = None
+    taxed_converted_price: Optional[float] = None  # 税后转换价格
     profit_value: Optional[float] = None
     profit_symbol: Optional[str] = None
 
@@ -34,7 +35,8 @@ class PriceCalculatorService:
         item_name: str,
         item_quantity: str,
         item_price: str,
-        mystery_gem_mode: str = "min"
+        mystery_gem_mode: str = "min",
+        enable_tax_calculation: bool = False
     ) -> PriceCalculationResult:
         """计算物品价格（统一逻辑）
 
@@ -43,6 +45,7 @@ class PriceCalculatorService:
             item_quantity: 数量
             item_price: 价格（游戏内显示的价格）
             mystery_gem_mode: 奥秘辉石模式（min/max/random）
+            enable_tax_calculation: 是否开启税率计算
 
         Returns:
             价格计算结果
@@ -50,8 +53,11 @@ class PriceCalculatorService:
         Raises:
             PriceError: 价格计算失败时
         """
-        # 验证输入
-        if item_name == "--" or item_name == "已售罄":
+        from core.logger import get_logger
+        logger = get_logger(__name__)
+
+        # 验证输入 - 检查名称或数量是否为无效值
+        if item_name == "--" or item_name == "已售罄" or item_quantity == "--" or item_quantity == "已售罄":
             return PriceCalculationResult(
                 item_name=item_name,
                 item_quantity=item_quantity,
@@ -65,6 +71,8 @@ class PriceCalculatorService:
 
         # 获取神威辉石单价
         gem_price = self._item_price_service.get_price_by_name(self._gem_price_key)
+        logger.info(f"[价格计算] 物品={item_name}, 数量={item_quantity}, 价格={item_price}, 神威辉石单价={gem_price}, 税率计算={'开启' if enable_tax_calculation else '关闭'}")
+
         if gem_price is None or gem_price <= 0:
             raise PriceError(f"神威辉石价格无效: {gem_price}")
 
@@ -75,14 +83,16 @@ class PriceCalculatorService:
                 quantity_int=quantity_int,
                 gem_price=gem_price,
                 mystery_gem_mode=mystery_gem_mode,
-                item_price=item_price
+                item_price=item_price,
+                enable_tax_calculation=enable_tax_calculation
             )
         else:
             return self._calculate_normal_item_price(
                 item_name=item_name,
                 quantity_int=quantity_int,
                 gem_price=gem_price,
-                item_price=item_price
+                item_price=item_price,
+                enable_tax_calculation=enable_tax_calculation
             )
 
     def _calculate_mystery_gem_price(
@@ -91,7 +101,8 @@ class PriceCalculatorService:
         quantity_int: int,
         gem_price: float,
         mystery_gem_mode: str,
-        item_price: str
+        item_price: str,
+        enable_tax_calculation: bool = False
     ) -> PriceCalculationResult:
         """计算奥秘辉石价格
 
@@ -101,6 +112,7 @@ class PriceCalculatorService:
             gem_price: 神威辉石单价
             mystery_gem_mode: 奥秘辉石模式
             item_price: 游戏内价格
+            enable_tax_calculation: 是否开启税率计算
 
         Returns:
             价格计算结果
@@ -128,6 +140,7 @@ class PriceCalculatorService:
 
         # 计算转换价格
         converted_price_value = None
+        taxed_converted_price_value = None
         profit_value = None
         profit_symbol = None
 
@@ -136,7 +149,16 @@ class PriceCalculatorService:
                 price_int = int(item_price)
                 if price_int > 0:
                     converted_price_value = price_int * gem_price
-                    profit_value = original_price_value - converted_price_value
+                    # 奥秘辉石需要扣税（除初火源质外，奥秘辉石不是初火源质）
+                    if enable_tax_calculation:
+                        taxed_converted_price_value = converted_price_value * 0.875
+                        profit_value = original_price_value - taxed_converted_price_value
+                        from core.logger import get_logger
+                        logger = get_logger(__name__)
+                        logger.info(f"[税率计算-奥秘辉石] 物品={item_name}, 原价={original_price_value}, 转换价={converted_price_value}, 税后价={taxed_converted_price_value}({converted_price_value}×0.875), 盈亏={profit_value}")
+                    else:
+                        taxed_converted_price_value = converted_price_value
+                        profit_value = original_price_value - converted_price_value
 
                     # 计算盈亏符号
                     if profit_value > 0:
@@ -153,10 +175,11 @@ class PriceCalculatorService:
 
         return PriceCalculationResult(
             item_name=item_name,
-            item_quantity=item_quantity,
+            item_quantity=str(quantity_int),  # 转换为字符串
             item_price=item_price,
             original_price=original_price_value,
             converted_price=converted_price_value,
+            taxed_converted_price=taxed_converted_price_value,
             profit_value=profit_value,
             profit_symbol=profit_symbol
         )
@@ -166,7 +189,8 @@ class PriceCalculatorService:
         item_name: str,
         quantity_int: int,
         gem_price: float,
-        item_price: str
+        item_price: str,
+        enable_tax_calculation: bool = False
     ) -> PriceCalculationResult:
         """计算普通物品价格
 
@@ -175,12 +199,18 @@ class PriceCalculatorService:
             quantity_int: 数量
             gem_price: 神威辉石单价
             item_price: 游戏内价格
+            enable_tax_calculation: 是否开启税率计算
 
         Returns:
             价格计算结果
         """
+        from core.logger import get_logger
+        logger = get_logger(__name__)
+
         # 获取物品单价
         unit_price = self._item_price_service.get_price_by_name(item_name)
+        logger.info(f"[价格计算-普通物品] 物品={item_name}, 单价={unit_price}, 数量={quantity_int}")
+
         if unit_price is None:
             raise PriceError(f"物品价格未找到: {item_name}")
 
@@ -189,6 +219,7 @@ class PriceCalculatorService:
 
         # 计算转换价格
         converted_price_value = None
+        taxed_converted_price_value = None
         profit_value = None
         profit_symbol = None
 
@@ -197,7 +228,18 @@ class PriceCalculatorService:
                 price_int = int(item_price)
                 if price_int > 0:
                     converted_price_value = price_int * gem_price
-                    profit_value = original_price_value - converted_price_value
+                    # 判断是否是初火源质，如果不是且开启了税率计算，则需要扣税
+                    if enable_tax_calculation and item_name != "初火源质":
+                        taxed_converted_price_value = converted_price_value * 0.875
+                        profit_value = original_price_value - taxed_converted_price_value
+                        logger.info(f"[税率计算-普通物品] 物品={item_name}, 原价={original_price_value}, 转换价={converted_price_value}, 税后价={taxed_converted_price_value}({converted_price_value}×0.875), 盈亏={profit_value}")
+                    elif enable_tax_calculation and item_name == "初火源质":
+                        taxed_converted_price_value = converted_price_value
+                        profit_value = original_price_value - converted_price_value
+                        logger.info(f"[税率计算-初火源质] 物品={item_name}, 原价={original_price_value}, 转换价={converted_price_value}, 不扣税, 盈亏={profit_value}")
+                    else:
+                        taxed_converted_price_value = converted_price_value
+                        profit_value = original_price_value - converted_price_value
 
                     # 计算盈亏符号
                     if profit_value > 0:
@@ -211,10 +253,11 @@ class PriceCalculatorService:
 
         return PriceCalculationResult(
             item_name=item_name,
-            item_quantity=item_quantity,
+            item_quantity=str(quantity_int),  # 转换为字符串
             item_price=item_price,
             original_price=original_price_value,
             converted_price=converted_price_value,
+            taxed_converted_price=taxed_converted_price_value,
             profit_value=profit_value,
             profit_symbol=profit_symbol
         )

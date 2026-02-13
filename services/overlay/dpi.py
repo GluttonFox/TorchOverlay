@@ -1,6 +1,6 @@
 import ctypes
 
-def enable_per_monitor_v2_dpi_awareness():
+def enable_per_monitor_v2_dpi_awareness() -> None:
     """
     开启 Per-Monitor v2 DPI awareness，避免高DPI下窗口/截图/overlay坐标不一致。
     """
