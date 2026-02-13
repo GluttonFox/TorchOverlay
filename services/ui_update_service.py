@@ -1,7 +1,8 @@
 """UI更新服务 - 统一处理UI更新逻辑"""
-from typing import List, Dict
+from typing import List, Dict, Optional
 from core.logger import get_logger
 from domain.models import Region
+from services.exchange_verification_service import ExchangeVerificationService
 
 logger = get_logger(__name__)
 
@@ -9,7 +10,8 @@ logger = get_logger(__name__)
 class UIUpdateService:
     """UI更新服务 - 封装UI更新逻辑"""
 
-    def __init__(self, text_parser, price_calculator, item_price_service, controller=None):
+    def __init__(self, text_parser, price_calculator, item_price_service, controller=None,
+                 verification_service: Optional[ExchangeVerificationService] = None):
         """初始化UI更新服务
 
         Args:
@@ -17,11 +19,13 @@ class UIUpdateService:
             price_calculator: 价格计算服务
             item_price_service: 物品价格服务
             controller: 控制器（可选，用于记录兑换日志）
+            verification_service: 兑换验证服务（可选，用于交叉验证）
         """
         self._text_parser = text_parser
         self._price_calculator = price_calculator
         self._item_price_service = item_price_service
         self._controller = controller
+        self._verification_service = verification_service
         self._cfg = None
 
     def set_config(self, cfg):
@@ -31,6 +35,15 @@ class UIUpdateService:
             cfg: 应用配置
         """
         self._cfg = cfg
+
+    def set_verification_service(self, verification_service: ExchangeVerificationService) -> None:
+        """设置验证服务
+
+        Args:
+            verification_service: 兑换验证服务
+        """
+        self._verification_service = verification_service
+        logger.info("验证服务已设置")
 
     def prepare_overlay_text_items(
         self,
@@ -154,7 +167,7 @@ class UIUpdateService:
                 if result.profit_value is not None:
                     profit_ratio = f"{result.profit_value:.2f}"
             except Exception as e:
-                logger.debug(f"价格计算失败: {e}")
+                # logger.debug(f"价格计算失败: {e}")
 
             table_results.append({
                 'index': idx + 1,
@@ -240,8 +253,23 @@ class UIUpdateService:
                         # 决定显示的价格：如果开启税率计算，显示税后价格；否则显示原始转换价
                         display_price = result.taxed_converted_price if enable_tax_calculation else result.converted_price
 
-                        # 添加兑换记录（仅在控制器可用时）
-                        if self._controller:
+                        # 添加OCR识别结果到验证服务（如果可用）
+                        if self._verification_service:
+                            try:
+                                self._verification_service.add_ocr_result(
+                                    item_name=item_name,
+                                    item_quantity=item_quantity,
+                                    original_price=result.original_price,
+                                    converted_price=display_price,
+                                    profit=profit_value,
+                                    gem_cost=item_price
+                                )
+                                # logger.debug(f"添加OCR识别结果到验证服务: {item_name}")
+                            except Exception as e:
+                                logger.error(f"添加OCR识别结果到验证服务失败: {e}")
+
+                        # 兼容旧版本：添加兑换记录（仅在控制器可用且没有验证服务时）
+                        elif self._controller:
                             try:
                                 self._controller.add_exchange_log(
                                     item_name=item_name,

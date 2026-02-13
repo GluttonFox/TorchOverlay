@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
+import re
 from datetime import datetime
 from typing import List, Dict
 from core.logger import get_logger
@@ -111,7 +112,25 @@ class ExchangeLogWindow:
         try:
             if os.path.exists(self._log_file):
                 with open(self._log_file, 'r', encoding='utf-8') as f:
-                    self._logs = json.load(f)
+                    all_logs = json.load(f)
+
+                # 只加载验证通过的记录（新格式中 verified=true，旧格式没有verified字段则默认显示）
+                self._logs = []
+                unverified_count = 0
+                for log in all_logs:
+                    # 检查是否有verified字段
+                    if 'verified' in log:
+                        # 新格式：只显示verified=true的记录
+                        if log.get('verified', False):
+                            self._logs.append(log)
+                        else:
+                            unverified_count += 1
+                    else:
+                        # 旧格式：显示所有记录（兼容）
+                        self._logs.append(log)
+
+                if unverified_count > 0:
+                    logger.info(f"过滤了 {unverified_count} 条未验证的记录")
             else:
                 self._logs = []
 
@@ -119,7 +138,7 @@ class ExchangeLogWindow:
             self._update_table()
             self._update_stats()
             self._update_item_filter()
-            logger.info(f"加载了 {len(self._logs)} 条兑换记录")
+            logger.info(f"加载了 {len(self._logs)} 条验证通过的兑换记录")
         except Exception as e:
             logger.error(f"加载兑换日志失败: {e}")
             messagebox.showerror("错误", f"加载兑换日志失败：{e}")
@@ -132,6 +151,24 @@ class ExchangeLogWindow:
 
         # 添加数据
         for log in reversed(self._filtered_logs):
+            # 处理时间显示：优先使用timestamp（新格式），兼容time（旧格式）
+            timestamp = log.get('timestamp')
+            time_str = ''
+            if timestamp:
+                # 新格式：timestamp是ISO格式
+                try:
+                    dt = datetime.fromisoformat(timestamp)
+                    time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except:
+                    time_str = timestamp
+            else:
+                # 旧格式：直接使用time字段
+                time_str = log.get('time', '')
+
+            # 清理物品名称（去除前缀英文、数字、符号）
+            raw_item_name = log.get('item_name', '')
+            clean_item_name = self._extract_chinese_name(raw_item_name) or raw_item_name
+
             # 根据盈亏值设置颜色标签
             profit = log.get('profit', 0)
             if profit > 0:
@@ -142,13 +179,13 @@ class ExchangeLogWindow:
                 tags = ('even',)
 
             self.tree.insert('', 'end', values=(
-                log.get('time', ''),
-                log.get('item_name', ''),
-                log.get('quantity', ''),
+                time_str,
+                clean_item_name,
+                log.get('item_quantity', log.get('quantity', '')),
                 f"{log.get('original_price', 0):.4f}",
                 f"{log.get('converted_price', 0):.4f}",
                 f"{profit:.4f}",
-                log.get('status', '完成')
+                "已验证" if log.get('verified') else log.get('status', '完成')
             ), tags=tags)
 
         # 设置颜色标签
@@ -174,10 +211,16 @@ class ExchangeLogWindow:
         if not self._logs:
             return
 
-        # 获取所有物品名称
+        # 获取所有物品名称（清理后的）
         item_names = set()
         for log in self._logs:
-            item_names.add(log.get('item_name', ''))
+            raw_item_name = log.get('item_name', '')
+            clean_item_name = self._extract_chinese_name(raw_item_name) or raw_item_name
+            item_names.add(clean_item_name)
+
+        # 排除空字符串
+        if '' in item_names:
+            item_names.remove('')
 
         self.item_filter['values'] = sorted(list(item_names))
 
@@ -188,13 +231,17 @@ class ExchangeLogWindow:
 
         self._filtered_logs = []
         for log in self._logs:
+            # 清理物品名称
+            raw_item_name = log.get('item_name', '')
+            clean_item_name = self._extract_chinese_name(raw_item_name) or raw_item_name
+
             # 物品名称筛选
-            if item_filter_text and log.get('item_name', '') != item_filter_text:
+            if item_filter_text and clean_item_name != item_filter_text:
                 continue
 
             # 关键词搜索
             if search_text:
-                log_text = f"{log.get('item_name', '')} {log.get('status', '')} {log.get('time', '')}".lower()
+                log_text = f"{clean_item_name} {log.get('status', '')} {log.get('time', '')}".lower()
                 if search_text not in log_text:
                     continue
 
@@ -242,7 +289,7 @@ class ExchangeLogWindow:
                 self._filtered_logs = []
                 self._update_table()
                 self._update_stats()
-                self._item_filter['values'] = []
+                self.item_filter['values'] = []
 
                 # 删除日志文件
                 if os.path.exists(self._log_file):
@@ -288,3 +335,16 @@ class ExchangeLogWindow:
         except Exception as e:
             logger.error(f"保存兑换日志失败: {e}")
             raise
+
+    def _extract_chinese_name(self, name: str) -> str | None:
+        """提取中文名称部分
+
+        Args:
+            name: 原始物品名称
+
+        Returns:
+            提取的中文名称，如果没有中文则返回None
+        """
+        # 提取所有中文字符、数字、括号等
+        chinese_part = re.sub(r'[^\u4e00-\u9fa5（）\(\)0-9]', '', name)
+        return chinese_part.strip() if chinese_part else None

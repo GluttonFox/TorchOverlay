@@ -76,7 +76,7 @@ class WindowCacheService:
         if self._enable_cache and not force_refresh:
             if self._check_cache(hwnd):
                 self._stats['cache_hits'] += 1
-                logger.debug(f"窗口信息缓存命中: hwnd={hwnd}")
+                # logger.debug(f"窗口信息缓存命中: hwnd={hwnd}")
                 return self._window_cache[hwnd]
 
         # 缓存未命中，查询API
@@ -86,7 +86,7 @@ class WindowCacheService:
         window_info = self._query_window_info(hwnd)
         if window_info:
             self._add_to_cache(hwnd, window_info)
-            logger.debug(f"窗口信息已缓存: hwnd={hwnd}, title={window_info.title[:20]}")
+            # logger.debug(f"窗口信息已缓存: hwnd={hwnd}, title={window_info.title[:20]}")
 
         return window_info
 
@@ -110,7 +110,7 @@ class WindowCacheService:
 
                 # 验证窗口是否仍然存在
                 if win32gui.IsWindow(cached_hwnd):
-                    logger.debug(f"窗口句柄缓存命中: title={title}, hwnd={cached_hwnd}")
+                    # logger.debug(f"窗口句柄缓存命中: title={title}, hwnd={cached_hwnd}")
                     return cached_hwnd
                 else:
                     # 窗口已不存在，移除缓存
@@ -123,7 +123,7 @@ class WindowCacheService:
         hwnd = self._find_window_by_title(title)
         if hwnd:
             self._hwnd_by_name[title] = hwnd
-            logger.debug(f"窗口句柄已缓存: title={title}, hwnd={hwnd}")
+            # logger.debug(f"窗口句柄已缓存: title={title}, hwnd={hwnd}")
 
         return hwnd
 
@@ -218,13 +218,13 @@ class WindowCacheService:
         window_info = self._window_cache[hwnd]
         if time.time() - window_info.timestamp > self._cache_ttl:
             del self._window_cache[hwnd]
-            logger.debug(f"窗口信息缓存已过期: hwnd={hwnd}")
+            # logger.debug(f"窗口信息缓存已过期: hwnd={hwnd}")
             return False
 
         # 检查窗口是否仍然存在
         if not win32gui.IsWindow(hwnd):
             del self._window_cache[hwnd]
-            logger.debug(f"窗口已不存在，移除缓存: hwnd={hwnd}")
+            # logger.debug(f"窗口已不存在，移除缓存: hwnd={hwnd}")
             return False
 
         return True
@@ -337,7 +337,7 @@ class WindowCacheService:
             cleaned_count += 1
 
         if cleaned_count > 0:
-            logger.debug(f"清理了 {cleaned_count} 个过期窗口缓存")
+            # logger.debug(f"清理了 {cleaned_count} 个过期窗口缓存")
 
         return cleaned_count
 
@@ -365,7 +365,7 @@ class WindowCacheService:
         if hwnd is not None:
             if hwnd in self._window_cache:
                 del self._window_cache[hwnd]
-                logger.debug(f"窗口缓存已失效: hwnd={hwnd}")
+                # logger.debug(f"窗口缓存已失效: hwnd={hwnd}")
 
             # 同时清理名称缓存中指向该句柄的条目
             titles_to_remove = []
@@ -375,7 +375,7 @@ class WindowCacheService:
 
             for title in titles_to_remove:
                 del self._hwnd_by_name[title]
-                logger.debug(f"窗口名缓存已失效: title={title}")
+                # logger.debug(f"窗口名缓存已失效: title={title}")
         else:
             self.clear_cache()
 

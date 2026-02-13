@@ -82,7 +82,7 @@ class OcrCacheService(IOcrService):
         # 检查内存缓存
         if self._check_memory_cache(image_hash):
             self._stats['cache_hits'] += 1
-            logger.debug(f"OCR内存缓存命中: {image_path}")
+            # logger.debug(f"OCR内存缓存命中: {image_path}")
             return self._cache[image_hash].result
 
         # 检查磁盘缓存
@@ -91,7 +91,7 @@ class OcrCacheService(IOcrService):
             if disk_result:
                 self._stats['disk_cache_hits'] += 1
                 self._stats['cache_misses'] += 1  # 磁盘命中但内存未命中
-                logger.debug(f"OCR磁盘缓存命中: {image_path}")
+                # logger.debug(f"OCR磁盘缓存命中: {image_path}")
                 # 加入内存缓存
                 self._add_to_memory_cache(image_hash, disk_result)
                 return disk_result
@@ -101,7 +101,7 @@ class OcrCacheService(IOcrService):
         if self._enable_disk_cache:
             self._stats['disk_cache_misses'] += 1
 
-        logger.debug(f"OCR缓存未命中，执行识别: {image_path}")
+        # logger.debug(f"OCR缓存未命中，执行识别: {image_path}")
         result = self._ocr_service.recognize(image_path)
 
         # 只缓存成功的结果
@@ -148,7 +148,7 @@ class OcrCacheService(IOcrService):
         entry = self._cache[image_hash]
         if time.time() - entry.timestamp > self._cache_ttl:
             del self._cache[image_hash]
-            logger.debug(f"缓存已过期: {image_hash}")
+            # logger.debug(f"缓存已过期: {image_hash}")
             return False
 
         # 更新命中统计
@@ -248,7 +248,7 @@ class OcrCacheService(IOcrService):
             entry = entries[i]
             del self._cache[entry.image_hash]
 
-        logger.debug(f"淘汰了 {evict_count} 个旧缓存条目")
+        # logger.debug(f"淘汰了 {evict_count} 个旧缓存条目")
 
     def _save_to_disk_cache(self, image_hash: str, result: OcrResult) -> None:
         """保存到磁盘缓存

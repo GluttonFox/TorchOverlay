@@ -100,10 +100,10 @@ class OverlayService(IOverlayService):
             # 只在目标窗口在前台时显示overlay
             if target_is_foreground and self._visible:
                 self._window.deiconify()
-                logger.debug("Overlay窗口已显示（目标窗口在前台）")
+                # logger.debug("Overlay窗口已显示（目标窗口在前台）")
             else:
                 if not target_is_foreground and self._visible:
-                    logger.debug("Overlay窗口已隐藏（目标窗口不在前台）")
+                    # logger.debug("Overlay窗口已隐藏（目标窗口不在前台）")
                 self._window.withdraw()
 
             # 获取新的client区域位置
@@ -137,7 +137,7 @@ class OverlayService(IOverlayService):
         # 绘制每个文本项
         for item in text_items:
             self._draw_text_item(item)
-            logger.debug(f"显示文本: {item.text} 在位置 ({item.x}, {item.y})")
+            # logger.debug(f"显示文本: {item.text} 在位置 ({item.x}, {item.y})")
 
         self._visible = True
         logger.info(f"Overlay已显示，包含 {len(text_items)} 个文本项")
@@ -223,7 +223,7 @@ class OverlayService(IOverlayService):
             justify="center"
         )
 
-        logger.debug(f"绘制文本: {item.text} 在 ({center_x}, {item.y + 10}), 颜色: {item.color}")
+        # logger.debug(f"绘制文本: {item.text} 在 ({center_x}, {item.y + 10}), 颜色: {item.color}")
 
     def _redraw_texts(self):
         """重新绘制所有内容"""

@@ -82,7 +82,7 @@ class OverlayRenderOptimizationService:
         """
         # 检查内容是否发生变化
         if not force_full_render and self._are_text_items_same(text_items):
-            logger.debug("文本项未变化，跳过更新")
+            # logger.debug("文本项未变化，跳过更新")
             return False
 
         # 更新文本项
@@ -93,7 +93,7 @@ class OverlayRenderOptimizationService:
             self._is_content_dirty = True
             self._invalidate_text_cache_items()
 
-        logger.debug(f"文本项已更新，共 {len(text_items)} 个项")
+        # logger.debug(f"文本项已更新，共 {len(text_items)} 个项")
         return True
 
     def update_regions(self, regions: List[Dict[str, Any]], force_full_render: bool = False) -> bool:
@@ -108,7 +108,7 @@ class OverlayRenderOptimizationService:
         """
         # 检查区域是否发生变化
         if not force_full_render and self._are_regions_same(regions):
-            logger.debug("区域未变化，跳过更新")
+            # logger.debug("区域未变化，跳过更新")
             return False
 
         # 更新区域
@@ -119,7 +119,7 @@ class OverlayRenderOptimizationService:
             self._is_content_dirty = True
             self._invalidate_region_cache_items()
 
-        logger.debug(f"区域已更新，共 {len(regions)} 个区域")
+        # logger.debug(f"区域已更新，共 {len(regions)} 个区域")
         return True
 
     def should_render(self, target_hwnd: int, force: bool = False) -> bool:
@@ -209,7 +209,7 @@ class OverlayRenderOptimizationService:
             self._is_content_dirty = False
         self._is_position_dirty = False
 
-        logger.debug(f"渲染完成: 模式={render_mode}, 耗时={render_time_ms:.2f}ms")
+        # logger.debug(f"渲染完成: 模式={render_mode}, 耗时={render_time_ms:.2f}ms")
 
     def get_render_mode(self) -> str:
         """获取渲染模式

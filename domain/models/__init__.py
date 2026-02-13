@@ -4,6 +4,9 @@ from .item_info import ItemInfo
 from .capture_result import CaptureResult
 from .ocr_result import OcrResult, OcrWordResult
 from .bound_game import BoundGame
+from .buy_event import BuyEvent
+from .refresh_event import RefreshEvent
+from .exchange_record import ExchangeRecord, OcrRecognitionRecord
 
 __all__ = [
     'Region',
@@ -12,4 +15,8 @@ __all__ = [
     'OcrResult',
     'OcrWordResult',
     'BoundGame',
+    'BuyEvent',
+    'RefreshEvent',
+    'ExchangeRecord',
+    'OcrRecognitionRecord',
 ]

@@ -88,7 +88,7 @@ class StateManager:
             return
 
         self._state.is_recognizing = True
-        logger.debug("[状态管理] 开始识别")
+        # logger.debug("[状态管理] 开始识别")
         self._event_bus.publish(Events.RECOGNITION_STARTED)
 
     def complete_recognition(self, success: bool, error: Optional[str] = None) -> None:
@@ -103,10 +103,10 @@ class StateManager:
         self._state.last_recognition_time = time.time()
         if success:
             self._state.recognition_count += 1
-            logger.debug(f"[状态管理] 识别完成 (成功), 总次数: {self._state.recognition_count}")
+            # logger.debug(f"[状态管理] 识别完成 (成功), 总次数: {self._state.recognition_count}")
             self._event_bus.publish(Events.RECOGNITION_COMPLETED)
         else:
-            logger.debug(f"[状态管理] 识别完成 (失败): {error}")
+            # logger.debug(f"[状态管理] 识别完成 (失败): {error}")
             self._event_bus.publish(Events.RECOGNITION_FAILED, error=error)
 
     def start_price_update(self) -> None:
@@ -116,7 +116,7 @@ class StateManager:
             return
 
         self._state.is_updating_price = True
-        logger.debug("[状态管理] 开始价格更新")
+        # logger.debug("[状态管理] 开始价格更新")
         self._event_bus.publish(Events.PRICE_UPDATE_STARTED)
 
     def complete_price_update(self, success: bool, message: str) -> None:
@@ -130,9 +130,9 @@ class StateManager:
         self._state.is_updating_price = False
         if success:
             self._state.last_price_update_time = time.time()
-            logger.debug(f"[状态管理] 价格更新完成 (成功)")
+            # logger.debug(f"[状态管理] 价格更新完成 (成功)")
         else:
-            logger.debug(f"[状态管理] 价格更新完成 (失败): {message}")
+            # logger.debug(f"[状态管理] 价格更新完成 (失败): {message}")
 
         self._event_bus.publish(
             Events.PRICE_UPDATE_COMPLETED if success else Events.PRICE_UPDATE_FAILED,
@@ -153,7 +153,7 @@ class StateManager:
         if 'mystery_gem_mode' in config_data:
             self._state.mystery_gem_mode = config_data['mystery_gem_mode']
 
-        logger.debug(f"[状态管理] 配置已更新: {config_data}")
+        # logger.debug(f"[状态管理] 配置已更新: {config_data}")
         self._event_bus.publish(Events.CONFIG_UPDATED, config=config_data)
 
     def set_ui_window_visible(self, visible: bool) -> None:
@@ -163,7 +163,7 @@ class StateManager:
             visible: 是否可见
         """
         self._state.ui_window_visible = visible
-        logger.debug(f"[状态管理] UI窗口可见状态: {visible}")
+        # logger.debug(f"[状态管理] UI窗口可见状态: {visible}")
         self._event_bus.publish(
             Events.UI_WINDOW_SHOWN if visible else Events.UI_WINDOW_CLOSED
         )

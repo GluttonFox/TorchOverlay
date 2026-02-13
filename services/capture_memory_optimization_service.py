@@ -221,10 +221,10 @@ class CaptureMemoryOptimizationService(ICaptureService):
             self._stats['optimized_captures'] += 1
 
             if savings > 0:
-                logger.debug(
-                    f"图片优化成功: {original_size} -> {optimized_size} bytes "
-                    f"(节省 {savings} bytes, {savings/original_size*100:.1f}%)"
-                )
+                # logger.debug(
+                #     f"图片优化成功: {original_size} -> {optimized_size} bytes "
+                #     f"(节省 {savings} bytes, {savings/original_size*100:.1f}%)"
+                # )
 
             # 显式释放内存
             img.close()
@@ -268,10 +268,10 @@ class CaptureMemoryOptimizationService(ICaptureService):
                 self._stats['cleanup_count'] += cleanup_count
 
                 if cleanup_count > 0:
-                    logger.debug(
-                        f"清理了 {cleanup_count} 个临时文件 "
-                        f"(总计: {len(temp_files)}, 限制: {self._max_temp_files})"
-                    )
+                    # logger.debug(
+                    #     f"清理了 {cleanup_count} 个临时文件 "
+                    #     f"(总计: {len(temp_files)}, 限制: {self._max_temp_files})"
+                    # )
 
             return cleanup_count
 

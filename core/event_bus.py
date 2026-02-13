@@ -22,7 +22,7 @@ class EventBus:
         if event_name not in self._listeners:
             self._listeners[event_name] = []
         self._listeners[event_name].append(callback)
-        logger.debug(f"[事件总线] 订阅事件: {event_name}")
+        # logger.debug(f"[事件总线] 订阅事件: {event_name}")
 
     def unsubscribe(self, event_name: str, callback: Callable) -> None:
         """取消订阅事件
@@ -34,7 +34,7 @@ class EventBus:
         if event_name in self._listeners:
             try:
                 self._listeners[event_name].remove(callback)
-                logger.debug(f"[事件总线] 取消订阅事件: {event_name}")
+                # logger.debug(f"[事件总线] 取消订阅事件: {event_name}")
             except ValueError:
                 logger.warning(f"[事件总线] 尝试取消不存在的回调: {event_name}")
 
@@ -47,10 +47,10 @@ class EventBus:
             **kwargs: 关键字参数
         """
         if event_name not in self._listeners or not self._listeners[event_name]:
-            logger.debug(f"[事件总线] 发布事件（无监听器）: {event_name}")
+            # logger.debug(f"[事件总线] 发布事件（无监听器）: {event_name}")
             return
 
-        logger.debug(f"[事件总线] 发布事件: {event_name}, 监听器数量: {len(self._listeners[event_name])}")
+        # logger.debug(f"[事件总线] 发布事件: {event_name}, 监听器数量: {len(self._listeners[event_name])}")
 
         for callback in self._listeners[event_name]:
             try:

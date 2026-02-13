@@ -1,5 +1,6 @@
 import win32gui
 import win32process
+import psutil
 
 class WindowFinder:
     """枚举窗口并按标题关键字匹配。"""
@@ -38,3 +39,19 @@ class WindowFinder:
             return bool(win32gui.IsWindow(hwnd))
         except Exception:
             return False
+
+    @staticmethod
+    def get_process_path(pid: int) -> str | None:
+        """获取进程的可执行文件路径
+
+        Args:
+            pid: 进程ID
+
+        Returns:
+            进程的可执行文件路径，如果获取失败返回None
+        """
+        try:
+            process = psutil.Process(pid)
+            return process.exe()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+            return None

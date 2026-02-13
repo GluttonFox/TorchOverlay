@@ -1,0 +1,629 @@
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=异界回响, quantity=10, price=81
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=初火灵砂, quantity=20, price=5
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=初火源质, quantity=1, price=50
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=升华之楔（魔法）, quantity=20, price=20
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=升华之楔（稀有）, quantity=20, price=90
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=初火源质, quantity=5, price=178
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=至臻灰烬, quantity=1, price=898
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 86, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 224, in _calculate_normal_item_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 02:41:26 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: name 'item_quantity' is not defined, item=奥秘辉石（大）, quantity=1, price=500
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 78, in calculate_item_price
+    return self._calculate_mystery_gem_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 161, in _calculate_mystery_gem_price
+    item_quantity=item_quantity,
+                  ^^^^^^^^^^^^^
+NameError: name 'item_quantity' is not defined
+2026-02-13 16:36:10 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 65, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 67, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:36:10 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 65, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 67, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:36:10 - services.ui_update_service - ERROR - _prepare_display_text:244 - 价格计算异常: 数量格式错误: 已售罄, item=UFH 能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 65, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 183, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 67, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:05 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:05 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:05 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:05 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 物品价格未找到: OF 至臻灰烬, item=OF 至臻灰烬, quantity=1, price=730
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 212, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: OF 至臻灰烬
+2026-02-13 16:46:47 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:47 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:47 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:46:47 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 物品价格未找到: OF 至臻灰烬, item=OF 至臻灰烬, quantity=1, price=730
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 212, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: OF 至臻灰烬
+2026-02-13 16:47:59 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:47:59 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:47:59 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:47:59 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 物品价格未找到: OF 至臻灰烬, item=OF 至臻灰烬, quantity=1, price=730
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 212, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: OF 至臻灰烬
+2026-02-13 16:50:55 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:50:55 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:50:55 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:51:06 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=能量核心X20, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:51:06 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=初火源质, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 16:51:06 - services.ui_update_service - ERROR - _prepare_display_text:247 - 价格计算异常: 数量格式错误: 已售罄, item=UFH 能量核心X10, quantity=已售罄, price=0
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 68, in calculate_item_price
+    quantity_int = int(item_quantity)
+                   ^^^^^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: '已售罄'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 185, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 70, in calculate_item_price
+    raise PriceError(f"数量格式错误: {item_quantity}") from e
+core.exceptions.PriceError: 数量格式错误: 已售罄
+2026-02-13 17:04:36 - services.ui_update_service - ERROR - _prepare_display_text:251 - 价格计算异常: 物品价格未找到: UF 升华之楔（魔法）, item=UF 升华之楔（魔法）, quantity=20, price=12
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 187, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: UF 升华之楔（魔法）
+2026-02-13 18:17:58 - ui.exchange_log_window - ERROR - _clear_logs:254 - 清空兑换日志失败: 'ExchangeLogWindow' object has no attribute '_item_filter'
+2026-02-13 18:19:36 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:19:41 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:19:46 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:19:51 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:19:56 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:20:01 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:20:06 - services.exchange_monitor_service - ERROR - _monitor_loop:125 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 88, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 201, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:28 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:33 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:38 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:43 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:48 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:53 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:31:58 - services.exchange_monitor_service - ERROR - _monitor_loop:128 - 监控任务执行失败: dictionary changed size during iteration
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_monitor_service.py", line 89, in _monitor_loop
+    verified_records = self._verification_service.verify_purchases()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\exchange_verification_service.py", line 252, in verify_purchases
+    for ocr_id, ocr_record in self._ocr_cache.items():
+RuntimeError: dictionary changed size during iteration
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: E8 0ZX喜, item=E8 0ZX喜, quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: E8 0ZX喜
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 靠2 0Z (), item=靠2 0Z (), quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 靠2 0Z ()
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 06 OL, item=06 OL, quantity=40101401301440430, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 06 OL
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: L69 00LX回, item=L69 00LX回, quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: L69 00LX回
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 8 09×不, item=8 09×不, quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 8 09×不
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 9Zl 0ZX回, item=9Zl 0ZX回, quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 9Zl 0ZX回
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 0×不 --01S--, item=0×不 --01S--, quantity=1, price=01
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 0×不 --01S--
+2026-02-13 18:50:02 - services.ui_update_service - ERROR - _prepare_display_text:296 - 价格计算异常: 物品价格未找到: 00z (), item=00z (), quantity=1, price=--
+Traceback (most recent call last):
+  File "C:\Users\16418\AHK\TorchOverlay\services\ui_update_service.py", line 202, in _prepare_display_text
+    result = self._price_calculator.calculate_item_price(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 90, in calculate_item_price
+    return self._calculate_normal_item_price(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\16418\AHK\TorchOverlay\services\price_calculator_service.py", line 215, in _calculate_normal_item_price
+    raise PriceError(f"物品价格未找到: {item_name}")
+core.exceptions.PriceError: 物品价格未找到: 00z ()

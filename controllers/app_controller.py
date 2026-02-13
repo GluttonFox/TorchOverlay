@@ -47,6 +47,9 @@ class AppController:
         state_manager: StateManager,
         event_bus: EventBus,
         ui_update_service: UIUpdateService,
+        game_log_watcher=None,
+        verification_service=None,
+        exchange_monitor=None,
     ):
         """初始化控制器
 
@@ -83,6 +86,9 @@ class AppController:
         self._event_bus = event_bus
         self._ui_update_service = ui_update_service
         self._ui_update_service.set_config(cfg)
+        self._game_log_watcher = game_log_watcher
+        self._verification_service = verification_service
+        self._exchange_monitor = exchange_monitor
         self._ui = None
 
     def attach_ui(self, ui) -> None:
@@ -103,7 +109,7 @@ class AppController:
             **kwargs: 打印关键字参数
         """
         if self._cfg.ocr.debug_mode:
-            logger.debug(*args, **kwargs)
+            # logger.debug(*args, **kwargs)
 
     def on_window_shown(self) -> None:
         """窗口显示后的初始化"""
@@ -115,6 +121,10 @@ class AppController:
         while True:
             if self._binder.try_bind():
                 self._ui.set_bind_state(self._binder.bound)
+
+                # 初始化游戏日志监控（基于绑定的进程路径）
+                self._initialize_game_log_watcher()
+
                 return
 
             retry = self._ui.ask_bind_retry_or_exit()
@@ -122,6 +132,88 @@ class AppController:
                 self._overlay.close()
                 self._ui.close()
                 return
+
+    def _initialize_game_log_watcher(self) -> None:
+        """初始化游戏日志监控服务
+
+        根据绑定的游戏进程路径动态设置游戏日志路径
+        """
+        if not self._game_log_watcher:
+            logger.info("游戏日志监控服务未初始化")
+            return
+
+        try:
+            # 获取进程路径
+            process_path = self._binder._finder.get_process_path(self._binder.bound.process_id)
+            if not process_path:
+                logger.warning("无法获取游戏进程路径，使用默认日志路径")
+                process_path = r"D:\TapTap\PC Games\172664\UE_game\Torchlight\Saved\Logs\UE_game.log"
+
+            # 构建游戏日志路径
+            # 游戏进程在 UE_game\Binaries\Win64\ 下，需要向上找到 UE_game 目录
+            # 然后拼接: UE_game\Torchlight\Saved\Logs\UE_game.log
+            import os
+            process_dir = os.path.dirname(process_path)
+
+            # 从进程目录向上查找 UE_game 目录
+            current_dir = process_dir
+            ue_game_dir = None
+
+            # 最多向上查找3层
+            for _ in range(3):
+                parent_dir = os.path.dirname(current_dir)
+                if os.path.basename(parent_dir) == "UE_game":
+                    ue_game_dir = parent_dir
+                    break
+                current_dir = parent_dir
+
+            # 如果找到 UE_game 目录，构建日志路径
+            if ue_game_dir:
+                game_log_path = os.path.join(ue_game_dir, "Torchlight", "Saved", "Logs", "UE_game.log")
+            else:
+                # 如果没找到，使用默认路径
+                logger.warning("未找到 UE_game 目录，使用默认日志路径")
+                game_log_path = r"D:\TapTap\PC Games\172664\UE_game\Torchlight\Saved\Logs\UE_game.log"
+
+            # 控制台输出路径信息（用于测试）
+            print("=" * 60)
+            print("游戏日志监控初始化")
+            print("=" * 60)
+            print(f"游戏进程路径: {process_path}")
+            print(f"游戏进程目录: {process_dir}")
+            if ue_game_dir:
+                print(f"UE_game目录: {ue_game_dir}")
+            print(f"游戏日志路径: {game_log_path}")
+            print("=" * 60)
+
+            logger.info(f"游戏进程路径: {process_path}")
+            logger.info(f"游戏进程目录: {process_dir}")
+            if ue_game_dir:
+                logger.info(f"UE_game目录: {ue_game_dir}")
+            logger.info(f"游戏日志路径: {game_log_path}")
+
+            # 检查日志文件是否存在
+            if os.path.exists(game_log_path):
+                file_size = os.path.getsize(game_log_path)
+                print(f"✓ 日志文件存在 (大小: {file_size} 字节)")
+                logger.info(f"日志文件存在 (大小: {file_size} 字节)")
+            else:
+                print(f"✗ 警告: 日志文件不存在!")
+                logger.warning(f"日志文件不存在: {game_log_path}")
+            print("=" * 60)
+
+            # 设置游戏日志路径
+            self._game_log_watcher._parser.game_log_path = game_log_path
+
+            # 启动监控
+            self._game_log_watcher.start()
+
+            print("✓ 游戏日志监控已启动")
+            logger.info("游戏日志监控已启动")
+
+        except Exception as e:
+            print(f"✗ 初始化游戏日志监控失败: {e}")
+            logger.error(f"初始化游戏日志监控失败: {e}", exc_info=True)
 
     def _schedule_watch(self) -> None:
         """安排窗口监视任务"""

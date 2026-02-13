@@ -96,7 +96,7 @@ class AsyncPriceUpdateService:
 
             # 检查是否可以更新
             if not force and not self._can_update():
-                logger.debug("未到更新时间，跳过")
+                # logger.debug("未到更新时间，跳过")
                 return False
 
             # 设置状态
@@ -405,7 +405,7 @@ class AsyncPriceUpdateService:
         Args:
             message: 消息内容
         """
-        logger.debug(message)
+        # logger.debug(message)
 
         # 写入日志文件
         try:

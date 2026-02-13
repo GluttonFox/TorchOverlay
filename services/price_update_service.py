@@ -27,7 +27,7 @@ class PriceUpdateService:
     def _debug_print(self, *args, **kwargs) -> None:
         """调试输出"""
         message = ' '.join(str(arg) for arg in args)
-        logger.debug(message)
+        # logger.debug(message)
 
         # 写入日志文件
         try:

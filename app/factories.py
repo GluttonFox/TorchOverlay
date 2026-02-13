@@ -14,6 +14,11 @@ from services.price_calculator_service import PriceCalculatorService
 from services.recognition_flow_service import RecognitionFlowService
 from services.ui_update_service import UIUpdateService
 from services.config_manager import ConfigManager
+from services.game_log_watcher_service import GameLogWatcherService
+from services.exchange_verification_service import ExchangeVerificationService
+from services.exchange_log_service import ExchangeLogService
+from services.refresh_log_service import RefreshLogService
+from services.exchange_monitor_service import ExchangeMonitorService
 from domain.services import TextParserService, RegionCalculatorService
 from core.logger import get_logger
 from core.event_bus import get_event_bus, EventBus
@@ -76,13 +81,51 @@ class AppFactory:
         price_update_service = self.create_price_update_service()
         price_calculator = self.create_price_calculator_service(item_price_service)
         recognition_flow = self.create_recognition_flow_service(capture, ocr, text_parser, region_calculator)
-        ui_update_service = self.create_ui_update_service(text_parser, price_calculator, item_price_service)
+
+        # 创建新的验证和日志服务
+        game_log_watcher = self.create_game_log_watcher_service()
+        verification_service = self.create_exchange_verification_service()
+        exchange_log_service = self.create_exchange_log_service()
+        refresh_log_service = self.create_refresh_log_service()
+        exchange_monitor = self.create_exchange_monitor_service(verification_service, exchange_log_service, refresh_log_service)
+
+        ui_update_service = self.create_ui_update_service(text_parser, price_calculator, item_price_service, verification_service)
         state_manager = self.create_state_manager()
         event_bus = self.create_event_bus()
-        controller = AppController(cfg=self._cfg, binder=binder, watcher=watcher, capture=capture, ocr=ocr, overlay=overlay, text_parser=text_parser, region_calculator=region_calculator, item_price_service=item_price_service, price_update_service=price_update_service, price_calculator=price_calculator, recognition_flow=recognition_flow, state_manager=state_manager, event_bus=event_bus, ui_update_service=ui_update_service)
+        controller = AppController(
+            cfg=self._cfg,
+            binder=binder,
+            watcher=watcher,
+            capture=capture,
+            ocr=ocr,
+            overlay=overlay,
+            text_parser=text_parser,
+            region_calculator=region_calculator,
+            item_price_service=item_price_service,
+            price_update_service=price_update_service,
+            price_calculator=price_calculator,
+            recognition_flow=recognition_flow,
+            state_manager=state_manager,
+            event_bus=event_bus,
+            ui_update_service=ui_update_service,
+            game_log_watcher=game_log_watcher,
+            verification_service=verification_service,
+            exchange_monitor=exchange_monitor
+        )
 
         # 将控制器引用传递给 UIUpdateService（用于记录兑换日志）
         ui_update_service._controller = controller
+
+        # 设置游戏日志监控回调
+        game_log_watcher.set_callbacks(
+            on_buy_event=verification_service.add_buy_event,
+            on_refresh_event=verification_service.add_refresh_event
+        )
+
+        # 启动兑换监控服务
+        exchange_monitor.start()
+
+        logger.info("兑换监控已启动，游戏日志监控将在窗口绑定后启动")
 
         return controller
 
@@ -126,16 +169,50 @@ class AppFactory:
         self,
         text_parser: TextParserService,
         price_calculator: PriceCalculatorService,
-        item_price_service: ItemPriceService
+        item_price_service: ItemPriceService,
+        verification_service: ExchangeVerificationService = None
     ) -> UIUpdateService:
         """创建UI更新服务"""
         service = UIUpdateService(
             text_parser=text_parser,
             price_calculator=price_calculator,
-            item_price_service=item_price_service
+            item_price_service=item_price_service,
+            verification_service=verification_service
         )
         service.set_config(self._cfg)
         return service
+
+    def create_game_log_watcher_service(self) -> GameLogWatcherService:
+        """创建游戏日志监控服务"""
+        # 游戏日志路径将基于窗口绑定的进程路径动态拼接
+        # 这里暂时使用None，实际路径在AppController中设置
+        return GameLogWatcherService(game_log_path=None, check_interval=2.0)
+
+    def create_exchange_verification_service(self) -> ExchangeVerificationService:
+        """创建兑换验证服务"""
+        return ExchangeVerificationService(cache_expire=60)
+
+    def create_exchange_log_service(self) -> ExchangeLogService:
+        """创建兑换日志服务"""
+        return ExchangeLogService()
+
+    def create_refresh_log_service(self) -> RefreshLogService:
+        """创建刷新日志服务"""
+        return RefreshLogService()
+
+    def create_exchange_monitor_service(
+        self,
+        verification_service: ExchangeVerificationService,
+        exchange_log_service: ExchangeLogService,
+        refresh_log_service: RefreshLogService
+    ) -> ExchangeMonitorService:
+        """创建兑换监控服务"""
+        return ExchangeMonitorService(
+            verification_service=verification_service,
+            exchange_log_service=exchange_log_service,
+            refresh_log_service=refresh_log_service,
+            check_interval=5.0
+        )
 
     def create_event_bus(self) -> EventBus:
         """创建事件总线（单例）"""
@@ -171,10 +248,10 @@ class AppFactory:
         self._debug_print(f"  API Key 长度: {len(cfg.api_key)}")
         self._debug_print(f"  Secret Key 长度: {len(cfg.secret_key)}")
         self._debug_print(f"  Debug Mode: {cfg.debug_mode}")
-        logger.debug("[AppFactory] 创建 OCR 引擎:")
-        logger.debug(f"  API Key 长度: {len(cfg.api_key)}")
-        logger.debug(f"  Secret Key 长度: {len(cfg.secret_key)}")
-        logger.debug(f"  Debug Mode: {cfg.debug_mode}")
+        # logger.debug("[AppFactory] 创建 OCR 引擎:")
+        # logger.debug(f"  API Key 长度: {len(cfg.api_key)}")
+        # logger.debug(f"  Secret Key 长度: {len(cfg.secret_key)}")
+        # logger.debug(f"  Debug Mode: {cfg.debug_mode}")
         return BaiduOcrEngine(cfg)
 
     def recreate_ocr_engine(self) -> BaiduOcrEngine:
