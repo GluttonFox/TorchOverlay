@@ -204,36 +204,41 @@ class LogStatusChecker:
         try:
             import psutil
 
-            # 查找游戏进程
-            for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            # 直接通过进程名查找，避免遍历所有进程
+            for proc in psutil.process_iter(['name', 'pid']):
                 try:
-                    if proc.info['name'] == 'torchlight_infinite.exe':
-                        exe_path = proc.info['exe']
-                        if exe_path:
-                            # 构建日志文件路径
-                            # 进程在 UE_game\Binaries\Win64\ 下，需要向上查找
-                            process_dir = os.path.dirname(exe_path)
-                            current_dir = process_dir
-                            ue_game_dir = None
+                    # 只检查进程名，避免获取exe路径（这会更快）
+                    if 'torchlight_infinite' in proc.info['name'].lower():
+                        # 获取进程的 exe 路径
+                        try:
+                            exe_path = proc.exe()
+                            if exe_path:
+                                # 构建日志文件路径
+                                # 进程在 UE_game\Binaries\Win64\ 下，需要向上查找
+                                process_dir = os.path.dirname(exe_path)
+                                current_dir = process_dir
+                                ue_game_dir = None
 
-                            # 最多向上查找3层
-                            for _ in range(3):
-                                parent_dir = os.path.dirname(current_dir)
-                                if os.path.basename(parent_dir) == "UE_game":
-                                    ue_game_dir = parent_dir
-                                    break
-                                current_dir = parent_dir
+                                # 最多向上查找3层
+                                for _ in range(3):
+                                    parent_dir = os.path.dirname(current_dir)
+                                    if os.path.basename(parent_dir) == "UE_game":
+                                        ue_game_dir = parent_dir
+                                        break
+                                    current_dir = parent_dir
 
-                            # 如果找到 UE_game 目录，构建日志路径
-                            if ue_game_dir:
-                                log_path = os.path.join(ue_game_dir, "Torchlight", "Saved", "Logs", "UE_game.log")
-                                logger.debug(f"找到游戏日志路径: {log_path}")
-                                return log_path
-
+                                # 如果找到 UE_game 目录，构建日志路径
+                                if ue_game_dir:
+                                    log_path = os.path.join(ue_game_dir, "Torchlight", "Saved", "Logs", "UE_game.log")
+                                    logger.debug(f"找到游戏日志路径: {log_path}")
+                                    return log_path
+                        except (psutil.AccessDenied, psutil.NoSuchProcess):
+                            # 如果获取exe路径失败，跳过这个进程
+                            continue
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
 
-            logger.warning("未找到游戏进程 torchlight_infinite.exe")
+            logger.warning("未找到游戏进程 torchlight_infinite")
             return None
 
         except ImportError:
@@ -252,9 +257,11 @@ class LogStatusChecker:
         try:
             import psutil
 
-            for proc in psutil.process_iter(['pid', 'name']):
+            # 直接通过进程名查找，避免遍历所有进程
+            for proc in psutil.process_iter(['name', 'pid']):
                 try:
-                    if proc.info['name'] == 'torchlight_infinite.exe':
+                    # 只检查进程名，避免不必要的属性访问
+                    if 'torchlight_infinite' in proc.info['name'].lower():
                         return True, proc.info['pid']
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
