@@ -24,37 +24,31 @@ wheels/
 venv/
 env/
 ENV/
-.venv
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# Logs
+logs/
+*.log
+price_update.log
+ocr_recognition_log.json
+exchange_log.json
+refresh_log.json
 
-# Project specific
-captures/*.png
-captures/*.jpg
-captures/*.bmp
-!captures/.gitkeep
-
-# Environment variables
-.env
-
-# Config files (contains sensitive API keys and regions)
-config.json
-range.json
-
-# Testing
+# Test
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
-.hypothesis/
-tests/fixtures/sample_images/*.png
-tests/output/
+
+# Debug files
+debug_*.py
+test_*.py
+
+# Documentation (optional)
+*.md
+!README.md
