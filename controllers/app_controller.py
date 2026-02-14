@@ -41,7 +41,7 @@ class AppController:
         text_parser: TextParserService,
         region_calculator: RegionCalculatorService,
         item_price_service,
-        price_update_service,
+        price_service,
         price_calculator: PriceCalculatorService,
         recognition_flow: RecognitionFlowService,
         state_manager: StateManager,
@@ -63,7 +63,7 @@ class AppController:
             text_parser: 文本解析领域服务
             region_calculator: 区域计算领域服务
             item_price_service: 物品价格服务
-            price_update_service: 物价更新服务
+            price_service: 统一价格服务（同步/异步）
             price_calculator: 价格计算服务
             recognition_flow: 识别流程服务
             state_manager: 状态管理器
@@ -79,7 +79,7 @@ class AppController:
         self._text_parser = text_parser
         self._region_calculator = region_calculator
         self._item_price_service = item_price_service
-        self._price_update_service = price_update_service
+        self._price_service = price_service
         self._price_calculator = price_calculator
         self._recognition_flow = recognition_flow
         self._state_manager = state_manager
@@ -110,6 +110,7 @@ class AppController:
         """
         if self._cfg.ocr.debug_mode:
             # logger.debug(*args, **kwargs)
+            pass
 
     def on_window_shown(self) -> None:
         """窗口显示后的初始化"""
@@ -304,8 +305,8 @@ class AppController:
 
     def on_update_price_click(self) -> None:
         """处理更新物价按钮点击事件"""
-        if not self._price_update_service.can_update():
-            last_update = self._price_update_service.get_last_update_time()
+        if not self._price_service.can_update():
+            last_update = self._price_service.get_last_update_time()
             if last_update:
                 time_str = last_update.strftime("%Y-%m-%d %H:%M:%S")
                 self._ui.show_info(f"距离上次更新不到1小时。\n上次更新时间：{time_str}")
@@ -324,7 +325,7 @@ class AppController:
 
         # 在UI线程中异步执行更新
         def do_update():
-            success, message = self._price_update_service.update_prices()
+            success, message = self._price_service.update_prices()
 
             # 完成价格更新状态
             self._state_manager.complete_price_update(success=success, message=message)

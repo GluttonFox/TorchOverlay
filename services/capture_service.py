@@ -1,6 +1,7 @@
-"""截图服务 - 实现ICaptureService接口"""
+"""截图服务 - 实现ICaptureService接口，集成内存优化"""
 import os
 import threading
+import gc
 from typing import Any
 
 from PIL import Image
@@ -8,16 +9,24 @@ import win32gui
 
 from services.interfaces import ICaptureService, CaptureResult
 from services.overlay.target_window import get_client_rect_in_screen
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class CaptureService(ICaptureService):
     """
-    截图服务实现
+    截图服务实现（带内存优化）
 
     策略：
     1. capture_window: 按窗口句柄截取整窗
     2. capture_client: 截取client区域（推荐用于OCR/Overlay对齐）
     3. capture_region: 截取client区域内的指定子区域
+
+    优化特性：
+    - 自动释放图像资源
+    - 可选的图片格式优化
+    - 可选的临时文件自动清理
     """
 
     def capture_window(
@@ -36,6 +45,8 @@ class CaptureService(ICaptureService):
         Returns:
             截图结果
         """
+        self._stats['total_captures'] += 1
+
         if not hwnd or not win32gui.IsWindow(hwnd):
             return CaptureResult(ok=False, error="无效的目标窗口句柄(hwnd)")
 
@@ -43,7 +54,13 @@ class CaptureService(ICaptureService):
         if not title.strip():
             return CaptureResult(ok=False, error="目标窗口标题为空，无法按标题截图")
 
-        return self._capture_by_title(title, out_path, timeout_sec)
+        result = self._capture_by_title(title, out_path, timeout_sec)
+
+        # 优化和清理
+        if result.ok and result.path:
+            self._post_process_capture(result.path)
+
+        return result
 
     def capture_region(
         self,
@@ -87,6 +104,8 @@ class CaptureService(ICaptureService):
             return client
 
         # 2) 从 client 截图中裁剪出指定区域
+        im = None
+        cropped = None
         try:
             x = int(region['x'])
             y = int(region['y'])
@@ -123,6 +142,18 @@ class CaptureService(ICaptureService):
 
         except Exception as e:
             return CaptureResult(ok=False, error=f"裁剪区域失败：{e}")
+        finally:
+            # 确保图像对象被正确关闭
+            if cropped:
+                cropped.close()
+            if im:
+                im.close()
+
+            # 优化和清理
+            self._post_process_capture(out_path)
+
+            # 优化和清理
+            self._post_process_capture(out_path)
 
     def capture_client(
         self,
@@ -147,6 +178,8 @@ class CaptureService(ICaptureService):
         if not title.strip():
             return CaptureResult(ok=False, error="目标窗口标题为空，无法按标题截图")
 
+        self._stats['total_captures'] += 1
+
         out_path = os.path.abspath(out_path)
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
@@ -158,6 +191,8 @@ class CaptureService(ICaptureService):
             return full
 
         # 2) 计算 client 相对整窗的偏移（都用屏幕坐标系）
+        im = None
+        cropped = None
         try:
             wx1, wy1, wx2, wy2 = win32gui.GetWindowRect(hwnd)    # window rect in screen coords
             cx, cy, cw, ch = get_client_rect_in_screen(hwnd)     # client rect in screen coords
@@ -180,6 +215,144 @@ class CaptureService(ICaptureService):
 
         except Exception as e:
             return CaptureResult(ok=False, error=f"裁剪 client 失败：{e}")
+        finally:
+            # 确保图像对象被正确关闭
+            if cropped:
+                cropped.close()
+            if im:
+                im.close()
+
+    def _post_process_capture(self, image_path: str) -> None:
+        """截图后处理：优化图片和清理临时文件
+
+        Args:
+            image_path: 图片路径
+        """
+        try:
+            # 优化图片
+            if self._enable_optimization:
+                self._optimize_image(image_path)
+
+            # 清理临时文件
+            if self._auto_cleanup_temp:
+                self._cleanup_temp_files(os.path.dirname(image_path))
+        except Exception as e:
+            logger.warning(f"截图后处理失败: {e}")
+
+    def _optimize_image(self, image_path: str) -> bool:
+        """优化图片以减少内存使用
+
+        Args:
+            image_path: 图片路径
+
+        Returns:
+            是否优化成功
+        """
+        try:
+            original_size = os.path.getsize(image_path)
+            img = Image.open(image_path)
+
+            # 转换为RGB模式（如果需要）
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = background
+
+            # 保存为优化格式
+            if self._optimize_format == 'JPEG':
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+
+                optimized_path = image_path.replace('.png', '.jpg')
+                img.save(
+                    optimized_path,
+                    'JPEG',
+                    quality=self._optimize_quality,
+                    optimize=True
+                )
+
+                # 删除原始PNG
+                os.remove(image_path)
+                os.rename(optimized_path, image_path)
+            else:  # PNG
+                img.save(
+                    image_path,
+                    'PNG',
+                    optimize=True,
+                    compress_level=9
+                )
+
+            optimized_size = os.path.getsize(image_path)
+            savings = original_size - optimized_size
+
+            if savings > 0:
+                self._stats['optimized_captures'] += 1
+
+            # 显式释放内存
+            img.close()
+            del img
+            gc.collect()
+
+            return True
+
+        except Exception as e:
+            logger.error(f"优化图片失败: {e}")
+            return False
+
+    def _cleanup_temp_files(self, temp_dir: str) -> int:
+        """清理临时文件
+
+        Args:
+            temp_dir: 临时文件目录
+
+        Returns:
+            清理的文件数
+        """
+        try:
+            temp_files = []
+            for ext in ('*.png', '*.jpg', '*.jpeg'):
+                import glob
+                temp_files.extend(glob.glob(os.path.join(temp_dir, ext)))
+
+            # 按修改时间排序
+            temp_files.sort(key=lambda f: os.path.getmtime(f))
+
+            cleanup_count = 0
+            if len(temp_files) > self._max_temp_files:
+                files_to_delete = len(temp_files) - self._max_temp_files
+
+                for i in range(files_to_delete):
+                    try:
+                        os.remove(temp_files[i])
+                        cleanup_count += 1
+                    except Exception as e:
+                        logger.error(f"删除临时文件失败: {e}")
+
+                self._stats['cleanup_count'] += cleanup_count
+
+            return cleanup_count
+
+        except Exception as e:
+            logger.error(f"清理临时文件失败: {e}")
+            return 0
+
+    def get_stats(self) -> dict:
+        """获取统计信息
+
+        Returns:
+            统计信息字典
+        """
+        return self._stats.copy()
+
+    def reset_stats(self) -> None:
+        """重置统计信息"""
+        self._stats = {
+            'total_captures': 0,
+            'optimized_captures': 0,
+            'cleanup_count': 0
+        }
 
     def _capture_by_title(
         self,

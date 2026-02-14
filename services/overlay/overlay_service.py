@@ -104,6 +104,7 @@ class OverlayService(IOverlayService):
             else:
                 if not target_is_foreground and self._visible:
                     # logger.debug("Overlay窗口已隐藏（目标窗口不在前台）")
+                    pass
                 self._window.withdraw()
 
             # 获取新的client区域位置

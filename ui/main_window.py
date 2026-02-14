@@ -88,8 +88,6 @@ class MainWindow:
         )
         self.btn_settings.place(x=386, y=140, width=218, height=34)
 
-        self.root.after(0, self._controller.on_window_shown)
-
     def set_bind_state(self, bound: BoundGame | None):
         if bound:
             title = f"{self._cfg.app_title_prefix}-已绑定-{bound.title}"
@@ -217,6 +215,11 @@ class MainWindow:
 
     def run(self):
         self.set_bind_state(None)
+
+        # 在 mainloop 之前调用 on_window_shown，确保 UI 已经附加
+        if self._controller:
+            self._controller.on_window_shown()
+
         self.root.mainloop()
 
     def _open_settings(self):

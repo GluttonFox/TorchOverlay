@@ -9,7 +9,7 @@ from services.capture_service import CaptureService
 from services.ocr.baidu_ocr import BaiduOcrEngine, BaiduOcrConfig
 from services.overlay.overlay_service import OverlayService
 from services.item_price_service import ItemPriceService
-from services.price_update_service import PriceUpdateService
+from services.price_service import PriceService
 from services.price_calculator_service import PriceCalculatorService
 from services.recognition_flow_service import RecognitionFlowService
 from services.ui_update_service import UIUpdateService
@@ -78,7 +78,7 @@ class AppFactory:
         text_parser = self.create_text_parser_service()
         region_calculator = self.create_region_calculator_service()
         item_price_service = self.create_item_price_service()
-        price_update_service = self.create_price_update_service()
+        price_service = self.create_price_service()
         price_calculator = self.create_price_calculator_service(item_price_service)
         recognition_flow = self.create_recognition_flow_service(capture, ocr, text_parser, region_calculator)
 
@@ -102,7 +102,7 @@ class AppFactory:
             text_parser=text_parser,
             region_calculator=region_calculator,
             item_price_service=item_price_service,
-            price_update_service=price_update_service,
+            price_service=price_service,
             price_calculator=price_calculator,
             recognition_flow=recognition_flow,
             state_manager=state_manager,
@@ -122,10 +122,10 @@ class AppFactory:
             on_refresh_event=verification_service.add_refresh_event
         )
 
-        # 启动兑换监控服务
-        exchange_monitor.start()
+        # 注意：兑换监控服务将在应用启动后启动，避免在初始化时启动线程
+        # exchange_monitor.start()
 
-        logger.info("兑换监控已启动，游戏日志监控将在窗口绑定后启动")
+        logger.info("兑换监控服务已创建，将在应用启动后启动")
 
         return controller
 
@@ -141,9 +141,11 @@ class AppFactory:
         """创建物品价格服务"""
         return ItemPriceService()
 
-    def create_price_update_service(self) -> PriceUpdateService:
-        """创建物价更新服务"""
-        return PriceUpdateService(self._cfg)
+    def create_price_service(self) -> PriceService:
+        """创建价格服务（统一同步和异步）"""
+        return PriceService(
+            config_path=self._cfg.get_config_path() if hasattr(self._cfg, 'get_config_path') else None
+        )
 
     def create_price_calculator_service(self, item_price_service: ItemPriceService) -> PriceCalculatorService:
         """创建价格计算服务"""

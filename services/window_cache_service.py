@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 from dataclasses import dataclass
 
 from core.logger import get_logger
+from core.cache_manager import LRUCache
 
 logger = get_logger(__name__)
 
@@ -35,22 +36,33 @@ class WindowCacheService:
     def __init__(
         self,
         cache_ttl_seconds: int = 2,
-        enable_cache: bool = True
+        enable_cache: bool = True,
+        max_cache_size: int = 50
     ):
         """初始化窗口缓存服务
 
         Args:
             cache_ttl_seconds: 缓存过期时间（秒），默认2秒
             enable_cache: 是否启用缓存，默认True
+            max_cache_size: 最大缓存条目数
         """
         self._cache_ttl = cache_ttl_seconds
         self._enable_cache = enable_cache
+        self._max_cache_size = max_cache_size
 
-        # 窗口信息缓存
-        self._window_cache: dict[int, WindowInfo] = {}
+        # 使用LRUCache替代普通字典
+        self._window_cache = LRUCache(
+            max_size=max_cache_size,
+            default_ttl=cache_ttl_seconds,
+            auto_cleanup=True
+        )
 
         # 窗口句柄缓存（按窗口名）
-        self._hwnd_by_name: dict[str, int] = {}
+        self._hwnd_by_name_cache = LRUCache(
+            max_size=20,
+            default_ttl=cache_ttl_seconds,
+            auto_cleanup=True
+        )
 
         # 统计信息
         self._stats = {
@@ -74,10 +86,10 @@ class WindowCacheService:
 
         # 检查缓存
         if self._enable_cache and not force_refresh:
-            if self._check_cache(hwnd):
+            cached_info = self._window_cache.get(hwnd)
+            if cached_info:
                 self._stats['cache_hits'] += 1
-                # logger.debug(f"窗口信息缓存命中: hwnd={hwnd}")
-                return self._window_cache[hwnd]
+                return cached_info
 
         # 缓存未命中，查询API
         self._stats['cache_misses'] += 1
@@ -85,17 +97,22 @@ class WindowCacheService:
 
         window_info = self._query_window_info(hwnd)
         if window_info:
-            self._add_to_cache(hwnd, window_info)
-            # logger.debug(f"窗口信息已缓存: hwnd={hwnd}, title={window_info.title[:20]}")
+            self._window_cache.set(hwnd, window_info)
 
         return window_info
 
-    def get_hwnd_by_title(self, title: str, force_refresh: bool = False) -> Optional[int]:
+    def get_hwnd_by_title(
+        self,
+        title: str,
+        force_refresh: bool = False,
+        partial_match: bool = True
+    ) -> Optional[int]:
         """根据窗口标题获取窗口句柄（带缓存）
 
         Args:
             title: 窗口标题（部分匹配）
             force_refresh: 是否强制刷新，忽略缓存
+            partial_match: 是否部分匹配标题
 
         Returns:
             窗口句柄，如果未找到则返回None
@@ -103,29 +120,54 @@ class WindowCacheService:
         self._stats['total_queries'] += 1
 
         # 检查缓存
-        if self._enable_cache and not force_refresh:
-            if title in self._hwnd_by_name:
+        if self._enable_cache and not force_refresh and not partial_match:
+            cached_hwnd = self._hwnd_by_name_cache.get(title)
+            if cached_hwnd:
                 self._stats['cache_hits'] += 1
-                cached_hwnd = self._hwnd_by_name[title]
-
-                # 验证窗口是否仍然存在
+                # 验证窗口是否仍然有效
                 if win32gui.IsWindow(cached_hwnd):
-                    # logger.debug(f"窗口句柄缓存命中: title={title}, hwnd={cached_hwnd}")
                     return cached_hwnd
-                else:
-                    # 窗口已不存在，移除缓存
-                    del self._hwnd_by_name[title]
 
-        # 缓存未命中，查询API
+        # 缓存未命中或部分匹配，查询API
         self._stats['cache_misses'] += 1
         self._stats['api_calls'] += 1
 
-        hwnd = self._find_window_by_title(title)
-        if hwnd:
-            self._hwnd_by_name[title] = hwnd
-            # logger.debug(f"窗口句柄已缓存: title={title}, hwnd={hwnd}")
+        hwnd = None
+        if partial_match:
+            hwnd = self._find_window_by_partial_title(title)
+        else:
+            try:
+                hwnd = win32gui.FindWindow(None, title)
+            except Exception as e:
+                logger.warning(f"查找窗口失败: {e}")
+
+        if hwnd and not partial_match:
+            self._hwnd_by_name_cache.set(title, hwnd)
 
         return hwnd
+
+    def _find_window_by_partial_title(self, partial_title: str) -> Optional[int]:
+        """通过部分标题查找窗口
+
+        Args:
+            partial_title: 部分窗口标题
+
+        Returns:
+            窗口句柄，如果未找到则返回None
+        """
+        def callback(hwnd, result):
+            title = win32gui.GetWindowText(hwnd)
+            if partial_title.lower() in title.lower() and win32gui.IsWindowVisible(hwnd):
+                result.append(hwnd)
+            return True
+
+        result = []
+        try:
+            win32gui.EnumWindows(callback, result)
+        except Exception as e:
+            logger.warning(f"枚举窗口失败: {e}")
+
+        return result[0] if result else None
 
     def get_client_rect(self, hwnd: int, force_refresh: bool = False) -> Optional[Tuple[int, int, int, int]]:
         """获取窗口客户区域（带缓存）
@@ -202,33 +244,6 @@ class WindowCacheService:
             return window_info.title
         return None
 
-    def _check_cache(self, hwnd: int) -> bool:
-        """检查缓存是否有效
-
-        Args:
-            hwnd: 窗口句柄
-
-        Returns:
-            是否命中有效缓存
-        """
-        if hwnd not in self._window_cache:
-            return False
-
-        # 检查是否过期
-        window_info = self._window_cache[hwnd]
-        if time.time() - window_info.timestamp > self._cache_ttl:
-            del self._window_cache[hwnd]
-            # logger.debug(f"窗口信息缓存已过期: hwnd={hwnd}")
-            return False
-
-        # 检查窗口是否仍然存在
-        if not win32gui.IsWindow(hwnd):
-            del self._window_cache[hwnd]
-            # logger.debug(f"窗口已不存在，移除缓存: hwnd={hwnd}")
-            return False
-
-        return True
-
     def _query_window_info(self, hwnd: int) -> Optional[WindowInfo]:
         """查询窗口信息
 
@@ -281,66 +296,6 @@ class WindowCacheService:
             logger.error(f"查询窗口信息失败: hwnd={hwnd}, error={e}")
             return None
 
-    def _find_window_by_title(self, title: str) -> Optional[int]:
-        """根据窗口标题查找窗口句柄
-
-        Args:
-            title: 窗口标题（部分匹配）
-
-        Returns:
-            窗口句柄，如果未找到则返回None
-        """
-        result_hwnd = None
-
-        def enum_callback(hwnd, _):
-            """枚举窗口回调函数"""
-            nonlocal result_hwnd
-
-            if win32gui.IsWindowVisible(hwnd):
-                window_title = win32gui.GetWindowText(hwnd)
-                if title in window_title:
-                    result_hwnd = hwnd
-                    return False  # 停止枚举
-            return True  # 继续枚举
-
-        win32gui.EnumWindows(enum_callback, None)
-        return result_hwnd
-
-    def _add_to_cache(self, hwnd: int, window_info: WindowInfo) -> None:
-        """添加到缓存
-
-        Args:
-            hwnd: 窗口句柄
-            window_info: 窗口信息
-        """
-        self._window_cache[hwnd] = window_info
-
-        # 清理过期的缓存
-        self._cleanup_expired_cache()
-
-    def _cleanup_expired_cache(self) -> int:
-        """清理过期的缓存条目
-
-        Returns:
-            清理的条目数
-        """
-        cleaned_count = 0
-        current_time = time.time()
-
-        expired_hwnds = []
-        for hwnd, window_info in self._window_cache.items():
-            if current_time - window_info.timestamp > self._cache_ttl:
-                expired_hwnds.append(hwnd)
-
-        for hwnd in expired_hwnds:
-            del self._window_cache[hwnd]
-            cleaned_count += 1
-
-        if cleaned_count > 0:
-            # logger.debug(f"清理了 {cleaned_count} 个过期窗口缓存")
-
-        return cleaned_count
-
     def clear_cache(self, clear_hwnd_cache: bool = True, clear_name_cache: bool = True) -> None:
         """清理缓存
 
@@ -353,7 +308,7 @@ class WindowCacheService:
             logger.info("窗口信息缓存已清理")
 
         if clear_name_cache:
-            self._hwnd_by_name.clear()
+            self._hwnd_by_name_cache.clear()
             logger.info("窗口名缓存已清理")
 
     def invalidate_cache(self, hwnd: Optional[int] = None) -> None:
@@ -368,14 +323,7 @@ class WindowCacheService:
                 # logger.debug(f"窗口缓存已失效: hwnd={hwnd}")
 
             # 同时清理名称缓存中指向该句柄的条目
-            titles_to_remove = []
-            for title, cached_hwnd in self._hwnd_by_name.items():
-                if cached_hwnd == hwnd:
-                    titles_to_remove.append(title)
-
-            for title in titles_to_remove:
-                del self._hwnd_by_name[title]
-                # logger.debug(f"窗口名缓存已失效: title={title}")
+            # (LRUCache会自动清理，这里不需要额外处理)
         else:
             self.clear_cache()
 
@@ -393,8 +341,8 @@ class WindowCacheService:
 
         return {
             **self._stats,
-            'window_cache_size': len(self._window_cache),
-            'name_cache_size': len(self._hwnd_by_name),
+            'window_cache_size': self._window_cache.get_size(),
+            'name_cache_size': self._hwnd_by_name_cache.get_size(),
             'cache_hit_rate': f"{hit_rate:.2f}%"
         }
 

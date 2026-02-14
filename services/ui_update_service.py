@@ -168,6 +168,7 @@ class UIUpdateService:
                     profit_ratio = f"{result.profit_value:.2f}"
             except Exception as e:
                 # logger.debug(f"价格计算失败: {e}")
+                pass
 
             table_results.append({
                 'index': idx + 1,

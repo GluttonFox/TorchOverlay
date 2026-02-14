@@ -427,11 +427,11 @@ class GameLogParserService:
         snapshot = self._inventory_manager.create_snapshot()
         instance_snapshot = self._inventory_manager.create_instance_snapshot()
         self._current_event = EventContext(
-        event_type=event_type,
-        start_time=timestamp,
-        snapshot=snapshot,
-        instance_snapshot=instance_snapshot
-    )
+            event_type=event_type,
+            start_time=timestamp,
+            snapshot=snapshot,
+            instance_snapshot=instance_snapshot
+        )
 
         # logger.info(f"========== 检测到事件开始: {event_type} ({timestamp.strftime('%H:%M:%S.%f')}) ==========")
         print(f"[日志解析] ========== 检测到事件开始: {event_type} ({timestamp.strftime('%H:%M:%S.%f')}) ==========")
@@ -497,6 +497,7 @@ class GameLogParserService:
 
         if old_timestamps:
             # logger.debug(f"清理了 {len(old_timestamps)} 条旧的 Update 记录")
+            pass
 
     def _finalize_event(self, buy_events: List[BuyEvent],
                         refresh_events: List[RefreshEvent]) -> None:
@@ -811,6 +812,7 @@ class GameLogParserService:
             # for idx, (timestamp, record) in enumerate(list(self._update_records_cache.items())[:5]):
             #     time_diff = abs((timestamp - target_timestamp).total_seconds())
             #     logger.debug(f"    [{idx}] 物品={record['base_id']}, 时间戳={timestamp.strftime('%H:%M:%S.%f')}, 时间差={time_diff*1000:.3f}毫秒")
+            pass
 
         return best_match
 
@@ -1144,6 +1146,7 @@ class GameLogParserService:
 
         except (ValueError, IndexError) as e:
             # logger.debug(f"解析日志行失败: {line[:100]}, 错误: {e}")
+            pass
 
         return None
 

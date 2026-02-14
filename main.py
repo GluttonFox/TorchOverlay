@@ -8,20 +8,18 @@ from app.application import TorchOverlayApplication  # 如果你用的是相对�
 
 def main() -> None:
     try:
-        print("Starting application...")
-        sys.stdout.flush()
+        # 启用 DPI 感知
         enable_per_monitor_v2_dpi_awareness()
-        print("DPI awareness enabled.")
-        sys.stdout.flush()
-        TorchOverlayApplication().run()
+
+        # 创建应用实例（暂时禁用优化功能以避免启动问题）
+        app = TorchOverlayApplication(enable_memory_monitor=False, enable_thread_pool=False)
+
+        # 运行应用
+        app.run()
     except SystemExit as e:
-        print(f"SystemExit: {e.code}")
-        sys.stdout.flush()
         raise
     except Exception:
         err = traceback.format_exc()
-        print(f"Error occurred:\n{err}")
-        sys.stdout.flush()
         try:
             root = tk.Tk()
             root.withdraw()

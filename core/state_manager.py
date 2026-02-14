@@ -133,6 +133,7 @@ class StateManager:
             # logger.debug(f"[状态管理] 价格更新完成 (成功)")
         else:
             # logger.debug(f"[状态管理] 价格更新完成 (失败): {message}")
+            pass
 
         self._event_bus.publish(
             Events.PRICE_UPDATE_COMPLETED if success else Events.PRICE_UPDATE_FAILED,
