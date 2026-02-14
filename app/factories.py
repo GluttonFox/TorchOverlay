@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 class AppFactory:
     """集中装配依赖：后续加截图/云OCR只需在这里注入。"""
 
-    def __init__(self, enable_config_hot_reload: bool = False, enable_config_encryption: bool = False) -> None:
+    def __init__(self, enable_config_hot_reload: bool = False, enable_config_encryption: bool = False, enable_log_status_check: bool = True) -> None:
         # 使用ConfigManager加载配置（如果需要热更新或加密）
         if enable_config_hot_reload or enable_config_encryption:
             self._config_manager = ConfigManager(
@@ -41,6 +41,8 @@ class AppFactory:
         else:
             self._config_manager = None
             self._cfg = AppConfig.load()
+
+        self._enable_log_status_check = enable_log_status_check
 
         self._debug_print("[AppFactory] 配置已加载:")
         self._debug_print(f"  API Key: {self._cfg.ocr.api_key[:10] if self._cfg.ocr.api_key else '空'}...")

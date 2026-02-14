@@ -19,7 +19,7 @@ class MainWindow:
         self._controller = controller
 
         self.root = tk.Tk()
-        self.root.geometry("620x200")
+        self.root.geometry("620x220")
         self.root.resizable(False, False)
 
         self.lbl_header = tk.Label(self.root, text="", font=("Segoe UI", 12, "bold"), anchor="w")
@@ -39,6 +39,17 @@ class MainWindow:
         )
         self.lbl_source_price.place(x=380, y=58, width=220, height=20)
 
+        # 日志状态显示
+        self.lbl_log_status = tk.Label(
+            self.root,
+            text="日志状态：未检测",
+            font=("Segoe UI", 9),
+            fg="#666666",
+            cursor="hand2"
+        )
+        self.lbl_log_status.place(x=16, y=95, width=280, height=20)
+        self.lbl_log_status.bind("<Button-1>", self._show_log_status_details)
+
         # 更新物价按钮和时间显示
         self.btn_update_price = tk.Button(
             self.root,
@@ -46,7 +57,7 @@ class MainWindow:
             font=("Segoe UI", 9),
             command=self._controller.on_update_price_click
         )
-        self.btn_update_price.place(x=300, y=95, width=80, height=24)
+        self.btn_update_price.place(x=300, y=120, width=80, height=24)
 
         self.lbl_last_update = tk.Label(
             self.root,
@@ -54,13 +65,17 @@ class MainWindow:
             font=("Segoe UI", 9),
             fg="#666666"
         )
-        self.lbl_last_update.place(x=390, y=97, width=180, height=20)
+        self.lbl_last_update.place(x=390, y=122, width=180, height=20)
 
         # 从config.json加载上次更新时间
         self._load_last_update_time()
 
         # 加载初火源质价格
         self._load_source_price()
+
+        # 初始化日志状态
+        self._log_status_checker = None
+        self._log_status = None
 
         # 按钮区域
         self.btn_detect = tk.Button(
@@ -227,6 +242,37 @@ class MainWindow:
         # 每次打开前从controller获取最新配置
         latest_cfg = self._controller.get_config()
         SettingsWindow(self.root, latest_cfg, self._save_config_callback)
+
+    def _show_log_status_details(self, event=None):
+        """显示日志状态详情"""
+        try:
+            from services.log_status_checker_service import get_log_status_checker
+
+            if self._log_status_checker is None:
+                self._log_status_checker = get_log_status_checker()
+
+            # 获取当前状态
+            status = self._log_status_checker.check_log_status()
+            message = self._log_status_checker.get_formatted_error_message()
+
+            # 根据状态选择消息框类型
+            if status.is_enabled and status.is_accessible:
+                messagebox.showinfo("日志状态", message)
+            else:
+                messagebox.showwarning("日志状态警告", message)
+
+        except Exception as e:
+            logger.error(f"显示日志状态详情失败: {e}", exc_info=True)
+            messagebox.showerror("错误", f"获取日志状态失败：{e}")
+
+    def update_log_status(self, status_text: str, color: str = "#666666"):
+        """更新日志状态显示
+
+        Args:
+            status_text: 状态文本
+            color: 文本颜色
+        """
+        self.lbl_log_status.config(text=status_text, fg=color)
 
     def _open_exchange_log(self):
         """打开兑换日志窗口"""

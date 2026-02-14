@@ -114,6 +114,9 @@ class AppController:
 
     def on_window_shown(self) -> None:
         """窗口显示后的初始化"""
+        # 检查日志状态
+        self._check_log_status()
+
         self._ensure_bound_or_exit()
         self._schedule_watch()
 
@@ -215,6 +218,25 @@ class AppController:
         except Exception as e:
             print(f"✗ 初始化游戏日志监控失败: {e}")
             logger.error(f"初始化游戏日志监控失败: {e}", exc_info=True)
+
+    def _check_log_status(self) -> None:
+        """检查日志状态并更新UI显示"""
+        try:
+            from services.log_status_checker_service import get_log_status_checker
+
+            checker = get_log_status_checker()
+            status = checker.check_log_status()
+
+            summary = checker.get_status_summary()
+            color = "#2ECC71" if status.is_enabled and status.is_accessible else "#E74C3C"
+
+            if self._ui:
+                self._ui.update_log_status(summary, color)
+
+            logger.info(f"日志状态: {summary}")
+
+        except Exception as e:
+            logger.error(f"检查日志状态失败: {e}", exc_info=True)
 
     def _schedule_watch(self) -> None:
         """安排窗口监视任务"""
