@@ -45,10 +45,17 @@ refresh_log.json
 .coverage
 htmlcov/
 
-# Debug files
-debug_*.py
-test_*.py
+# Debug files (保留特定调试文件)
+debug_startup.py
+debug_threadpool.py
+debug_startup_flow.py
 
-# Documentation (optional)
+# Documentation (保留重要文档)
 *.md
 !README.md
+!LOG_STATUS_CHECKER.md
+!THREADPOOL_INVESTIGATION.md
+!FIXES_SUMMARY.md
+!OPTIMIZATION_*.md
+!ARCHITECTURE_OPTIMIZATION_PLAN.md
+!FINAL_REPORT.md

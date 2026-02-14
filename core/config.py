@@ -196,6 +196,9 @@ class AppConfig:
     last_price_update: str = ""  # 上次物价更新时间（ISO格式字符串）
     enable_tax_calculation: bool = False  # 是否开启税率计算
     mystery_gem_mode: str = "min"  # 奥秘辉石处理模式: min, max, random
+    enable_exchange_log: bool = True  # 是否开启兑换日志功能
+    enable_auto_ocr: bool = False  # 是否开启自动OCR（检测到花费50神威辉石刷新商店后自动识别）
+    version: str = "1.0.0"  # 应用版本号
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> 'AppConfig':

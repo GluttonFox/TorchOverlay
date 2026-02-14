@@ -469,13 +469,16 @@ class ExchangeVerificationService:
         )
 
     def get_refresh_events(self) -> List[RefreshEvent]:
-        """获取刷新事件列表
+        """获取刷新事件列表并清空缓存
 
         Returns:
             刷新事件列表
         """
         with self._lock:
-            return self._refresh_events.copy()
+            # 获取所有刷新事件并清空列表
+            events = self._refresh_events.copy()
+            self._refresh_events.clear()
+            return events
 
     def clean_expired_records(self) -> int:
         """清理过期的OCR记录

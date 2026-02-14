@@ -100,3 +100,6 @@ class Events:
     # UI事件
     UI_WINDOW_SHOWN = "ui_window_shown"
     UI_WINDOW_CLOSED = "ui_window_closed"
+
+    # 连接事件
+    CONNECTION_CLOSED = "connection_closed"

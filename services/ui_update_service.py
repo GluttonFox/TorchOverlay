@@ -270,7 +270,7 @@ class UIUpdateService:
                                 logger.error(f"添加OCR识别结果到验证服务失败: {e}")
 
                         # 兼容旧版本：添加兑换记录（仅在控制器可用且没有验证服务时）
-                        elif self._controller:
+                        elif self._controller and self._cfg and self._cfg.enable_exchange_log:
                             try:
                                 self._controller.add_exchange_log(
                                     item_name=item_name,

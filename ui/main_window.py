@@ -19,45 +19,31 @@ class MainWindow:
         self._controller = controller
 
         self.root = tk.Tk()
-        self.root.geometry("620x220")
+        self.root.geometry("620x200")
         self.root.resizable(False, False)
 
-        self.lbl_header = tk.Label(self.root, text="", font=("Segoe UI", 12, "bold"), anchor="w")
-        self.lbl_header.place(x=16, y=14, width=588, height=28)
+        # 余额显示区域（顶部）
+        tk.Label(self.root, text="当前余额：", font=("Segoe UI", 11, "bold")).place(x=20, y=25)
+        self.lbl_balance = tk.Label(self.root, text="--", font=("Segoe UI", 18, "bold"), fg="#2ECC71")
+        self.lbl_balance.place(x=110, y=18, width=200, height=40)
 
-        # 余额显示区域
-        tk.Label(self.root, text="当前余额：", font=("Segoe UI", 12, "bold")).place(x=16, y=55)
-        self.lbl_balance = tk.Label(self.root, text="--", font=("Segoe UI", 16, "bold"), fg="#2ECC71")
-        self.lbl_balance.place(x=120, y=50, width=250, height=35)
-
-        # 初火源质价格显示
+        # 初火源质价格显示（右侧）
         self.lbl_source_price = tk.Label(
             self.root,
             text="初火源质:神威辉石 1:--",
             font=("Segoe UI", 9),
             fg="#666666"
         )
-        self.lbl_source_price.place(x=380, y=58, width=220, height=20)
+        self.lbl_source_price.place(x=330, y=25, width=270, height=20)
 
-        # 日志状态显示
-        self.lbl_log_status = tk.Label(
-            self.root,
-            text="日志状态：未检测",
-            font=("Segoe UI", 9),
-            fg="#666666",
-            cursor="hand2"
-        )
-        self.lbl_log_status.place(x=16, y=95, width=280, height=20)
-        self.lbl_log_status.bind("<Button-1>", self._show_log_status_details)
-
-        # 更新物价按钮和时间显示
+        # 更新物价按钮和时间显示（中间区域）
         self.btn_update_price = tk.Button(
             self.root,
             text="更新物价",
             font=("Segoe UI", 9),
             command=self._controller.on_update_price_click
         )
-        self.btn_update_price.place(x=300, y=120, width=80, height=24)
+        self.btn_update_price.place(x=20, y=80, width=90, height=28)
 
         self.lbl_last_update = tk.Label(
             self.root,
@@ -65,7 +51,7 @@ class MainWindow:
             font=("Segoe UI", 9),
             fg="#666666"
         )
-        self.lbl_last_update.place(x=390, y=122, width=180, height=20)
+        self.lbl_last_update.place(x=120, y=85, width=200, height=18)
 
         # 从config.json加载上次更新时间
         self._load_last_update_time()
@@ -73,11 +59,17 @@ class MainWindow:
         # 加载初火源质价格
         self._load_source_price()
 
-        # 初始化日志状态
-        self._log_status_checker = None
-        self._log_status = None
+        # 背包初始化警告覆盖层
+        self._backpack_warning_frame = tk.Frame(
+            self.root,
+            bg="#2C2C2C",
+            highlightbackground="#FF6B6B",
+            highlightthickness=1
+        )
+        # 暂时不显示，等背包状态确定后再决定
+        # self._backpack_warning_frame.place(x=0, y=0, width=620, height=200)
 
-        # 按钮区域
+        # 按钮区域（底部）
         self.btn_detect = tk.Button(
             self.root,
             text="识别物品",
@@ -85,7 +77,7 @@ class MainWindow:
             state="disabled",
             command=self._controller.on_detect_click
         )
-        self.btn_detect.place(x=16, y=140, width=110, height=30)
+        self.btn_detect.place(x=20, y=130, width=110, height=32)
 
         self.btn_exchange_log = tk.Button(
             self.root,
@@ -93,7 +85,11 @@ class MainWindow:
             font=("Segoe UI", 9),
             command=self._open_exchange_log
         )
-        self.btn_exchange_log.place(x=131, y=140, width=110, height=30)
+        self.btn_exchange_log.place(x=135, y=130, width=110, height=32)
+
+        # 根据配置控制兑换日志按钮的显示
+        if not cfg.enable_exchange_log:
+            self.btn_exchange_log.place_forget()
 
         self.btn_settings = tk.Button(
             self.root,
@@ -101,18 +97,25 @@ class MainWindow:
             font=("Segoe UI", 10),
             command=self._open_settings
         )
-        self.btn_settings.place(x=386, y=140, width=218, height=34)
+        self.btn_settings.place(x=380, y=130, width=220, height=32)
+
+        # 版本号显示（在底部右下角）
+        self.lbl_version = tk.Label(
+            self.root,
+            text=f"v{cfg.version}",
+            font=("Segoe UI", 8),
+            fg="#999999"
+        )
+        self.lbl_version.place(x=585, y=180, anchor="e")
 
     def set_bind_state(self, bound: BoundGame | None):
         if bound:
             title = f"{self._cfg.app_title_prefix}-已绑定-{bound.title}"
             self.root.title(title)
-            self.lbl_header.config(text=title)
             self.btn_detect.config(state="normal")
         else:
             title = f"{self._cfg.app_title_prefix}-未绑定"
             self.root.title(title)
-            self.lbl_header.config(text=title)
             self.btn_detect.config(state="disabled")
 
         self._check_ocr_config()
@@ -243,37 +246,6 @@ class MainWindow:
         latest_cfg = self._controller.get_config()
         SettingsWindow(self.root, latest_cfg, self._save_config_callback)
 
-    def _show_log_status_details(self, event=None):
-        """显示日志状态详情"""
-        try:
-            from services.log_status_checker_service import get_log_status_checker
-
-            if self._log_status_checker is None:
-                self._log_status_checker = get_log_status_checker()
-
-            # 获取当前状态
-            status = self._log_status_checker.check_log_status()
-            message = self._log_status_checker.get_formatted_error_message()
-
-            # 根据状态选择消息框类型
-            if status.is_enabled and status.is_accessible:
-                messagebox.showinfo("日志状态", message)
-            else:
-                messagebox.showwarning("日志状态警告", message)
-
-        except Exception as e:
-            logger.error(f"显示日志状态详情失败: {e}", exc_info=True)
-            messagebox.showerror("错误", f"获取日志状态失败：{e}")
-
-    def update_log_status(self, status_text: str, color: str = "#666666"):
-        """更新日志状态显示
-
-        Args:
-            status_text: 状态文本
-            color: 文本颜色
-        """
-        self.lbl_log_status.config(text=status_text, fg=color)
-
     def _open_exchange_log(self):
         """打开兑换日志窗口"""
         try:
@@ -282,14 +254,92 @@ class MainWindow:
             logger.error(f"打开兑换日志窗口失败: {e}")
             messagebox.showerror("错误", f"打开兑换日志失败：{e}")
 
-    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
+    def _save_config_callback(self, ocr_config: OcrConfig, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min", enable_exchange_log: bool = True, enable_auto_ocr: bool = False) -> bool:
         """保存配置回调"""
         try:
-            result = self._controller.update_config(ocr_config, watch_interval_ms, enable_tax_calculation, mystery_gem_mode)
+            result = self._controller.update_config(ocr_config, watch_interval_ms, enable_tax_calculation, mystery_gem_mode, enable_exchange_log, enable_auto_ocr)
             if result:
                 # 更新UI中保存的配置引用
                 self._cfg = self._controller.get_config()
+                # 更新兑换日志按钮的显示状态
+                self._update_exchange_log_button()
             return result
         except Exception as e:
             messagebox.showerror("错误", f"保存配置失败：{e}")
             return False
+
+    def _update_exchange_log_button(self):
+        """根据配置更新兑换日志按钮的显示状态"""
+        if self._cfg.enable_exchange_log:
+            self.btn_exchange_log.place(x=135, y=130, width=110, height=32)
+        else:
+            self.btn_exchange_log.place_forget()
+
+    def show_backpack_warning(self, show: bool = True) -> None:
+        """显示或隐藏背包未初始化警告
+
+        Args:
+            show: True 显示警告，False 隐藏警告
+        """
+        print(f"[调试] show_backpack_warning 被调用，show={show}")
+
+        if show:
+            print(f"[调试] 准备显示警告覆盖层")
+
+            # 创建警告内容
+            if not self._backpack_warning_frame.winfo_children():
+                # 警告图标
+                warning_label = tk.Label(
+                    self._backpack_warning_frame,
+                    text="⚠️",
+                    font=("Segoe UI", 48),
+                    bg="#2C2C2C",
+                    fg="#FF6B6B"
+                )
+                warning_label.pack(pady=(25, 15))
+
+                # 警告标题
+                title_label = tk.Label(
+                    self._backpack_warning_frame,
+                    text="背包未初始化",
+                    font=("Segoe UI", 18, "bold"),
+                    bg="#2C2C2C",
+                    fg="#FFFFFF"
+                )
+                title_label.pack(pady=(0, 15))
+
+                # 警告说明
+                desc_label = tk.Label(
+                    self._backpack_warning_frame,
+                    text="请打开日志后返回人物登录界面",
+                    font=("Segoe UI", 11),
+                    bg="#2C2C2C",
+                    fg="#E0E0E0",
+                    wraplength=500,
+                    justify="center"
+                )
+                desc_label.pack(pady=(0, 15))
+
+                # 提示信息
+                hint_label = tk.Label(
+                    self._backpack_warning_frame,
+                    text="检测到 LoadUILogicProgress=3 时会自动初始化背包\n重新登录游戏即可触发",
+                    font=("Segoe UI", 9),
+                    bg="#2C2C2C",
+                    fg="#999999",
+                    wraplength=500,
+                    justify="center"
+                )
+                hint_label.pack(pady=(0, 20))
+
+            # 显示警告覆盖层
+            self._backpack_warning_frame.place(x=0, y=0, width=620, height=200)
+            # 提升到最上层，确保覆盖所有元素
+            self._backpack_warning_frame.lift()
+            logger.info("显示背包未初始化警告")
+            print(f"[调试] 警告覆盖层已显示并提升到最上层")
+        else:
+            # 隐藏警告覆盖层
+            self._backpack_warning_frame.place_forget()
+            logger.info("隐藏背包未初始化警告")
+            print(f"[调试] 警告覆盖层已隐藏")

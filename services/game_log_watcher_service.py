@@ -28,21 +28,25 @@ class GameLogWatcherService:
         # 回调函数
         self._on_buy_event_callback: Optional[Callable] = None
         self._on_refresh_event_callback: Optional[Callable] = None
+        self._on_backpack_init_callback: Optional[Callable] = None
 
         # 监控线程
         self._thread: Optional[threading.Thread] = None
         self._running = False
 
     def set_callbacks(self, on_buy_event: Optional[Callable] = None,
-                     on_refresh_event: Optional[Callable] = None) -> None:
+                     on_refresh_event: Optional[Callable] = None,
+                     on_backpack_init: Optional[Callable] = None) -> None:
         """设置事件回调函数
 
         Args:
             on_buy_event: 购买事件回调，参数为BuyEvent对象
             on_refresh_event: 刷新事件回调，参数为RefreshEvent对象
+            on_backpack_init: 背包初始化回调，参数为is_initialized (bool)
         """
         self._on_buy_event_callback = on_buy_event
         self._on_refresh_event_callback = on_refresh_event
+        self._on_backpack_init_callback = on_backpack_init
         logger.info("事件回调函数已设置")
 
     def start(self) -> None:
@@ -82,12 +86,26 @@ class GameLogWatcherService:
         else:
             print(f"[日志监控] ⚠ 日志文件不存在: {self._parser.game_log_path}")
 
+        # 记录上次的背包初始化状态
+        last_backpack_init_state = self._parser._inventory_manager.is_backpack_initialized
+
         while self._running:
             try:
                 # 解析新事件
                 buy_events, refresh_events = self._parser.parse_new_events()
 
                 logger.info(f"[DEBUG] 解析到购买事件: {len(buy_events)}, 刷新事件: {len(refresh_events)}, 购买回调已设置: {self._on_buy_event_callback is not None}")
+
+                # 检查背包初始化状态变化
+                current_backpack_init_state = self._parser._inventory_manager.is_backpack_initialized
+                if current_backpack_init_state != last_backpack_init_state:
+                    logger.info(f"背包初始化状态变化: {last_backpack_init_state} -> {current_backpack_init_state}")
+                    if self._on_backpack_init_callback:
+                        try:
+                            self._on_backpack_init_callback(current_backpack_init_state)
+                        except Exception as e:
+                            logger.error(f"背包初始化状态回调执行失败: {e}", exc_info=True)
+                    last_backpack_init_state = current_backpack_init_state
 
                 # 触发购买事件回调
                 if buy_events and self._on_buy_event_callback:

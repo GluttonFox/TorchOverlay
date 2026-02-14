@@ -61,19 +61,18 @@ class InventoryStateManager:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    cls._instance._initialized_flag = False
         return cls._instance
     
     def __init__(self):
         """初始化"""
         # 单例模式下避免重复初始化
-        if hasattr(self, '_initialized'):
+        if hasattr(self, '_item_records'):
             return
 
-        self._initialized = False
         self._item_records: Dict[str, ItemRecord] = {}  # {item_id: ItemRecord} - 使用完整item_id（包含实例ID）作为key
         self._item_snapshot: Dict[str, int] = {}  # 快照: {base_id: bag_num} - 用于兼容性
         self._event_changes: list = []  # 当前事件内的物品变更
+        self._initialized_flag = False  # 背包初始化标志
         logger.info("背包状态管理器已初始化")
     
     @property

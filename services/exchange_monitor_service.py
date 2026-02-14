@@ -21,7 +21,9 @@ class ExchangeMonitorService:
                  verification_service: ExchangeVerificationService,
                  exchange_log_service: ExchangeLogService,
                  refresh_log_service: RefreshLogService,
-                 check_interval: float = 5.0):
+                 check_interval: float = 5.0,
+                 config=None,
+                 controller=None):
         """初始化监控服务
 
         Args:
@@ -29,11 +31,15 @@ class ExchangeMonitorService:
             exchange_log_service: 兑换日志服务
             refresh_log_service: 刷新日志服务
             check_interval: 检查间隔（秒）
+            config: 应用配置（可选）
+            controller: 控制器（可选，用于自动OCR功能）
         """
         self._verification_service = verification_service
         self._exchange_log_service = exchange_log_service
         self._refresh_log_service = refresh_log_service
         self._check_interval = check_interval
+        self._config = config
+        self._controller = controller
 
         # 回调函数
         self._on_exchange_verified_callback: Optional[Callable] = None
@@ -83,6 +89,14 @@ class ExchangeMonitorService:
         """监控循环"""
         logger.info("开始执行定期验证和保存任务")
 
+        # 打印自动OCR配置状态
+        if self._config:
+            logger.info(f"[自动OCR] 配置状态: enable_auto_ocr={self._config.enable_auto_ocr}")
+            print(f"[自动OCR] 配置状态: enable_auto_ocr={self._config.enable_auto_ocr}")
+        else:
+            logger.warning("[自动OCR] 配置未初始化")
+            print(f"[自动OCR] ⚠️ 配置未初始化")
+
         while self._running:
             try:
                 # 1. 验证购买记录
@@ -91,16 +105,19 @@ class ExchangeMonitorService:
                 if verified_records:
                     logger.info(f"验证通过 {len(verified_records)} 条兑换记录")
 
-                    # 保存到兑换日志
-                    if self._exchange_log_service.add_records(verified_records):
-                        logger.info("兑换记录已保存到exchange_log.json")
+                    # 保存到兑换日志（仅在启用时）
+                    if self._config and self._config.enable_exchange_log:
+                        if self._exchange_log_service.add_records(verified_records):
+                            logger.info("兑换记录已保存到exchange_log.json")
+                    else:
+                        logger.debug("兑换日志功能已禁用，跳过保存")
 
-                        # 触发回调
-                        if self._on_exchange_verified_callback:
-                            try:
-                                self._on_exchange_verified_callback(verified_records)
-                            except Exception as e:
-                                logger.error(f"兑换验证通过回调执行失败: {e}", exc_info=True)
+                    # 触发回调
+                    if self._on_exchange_verified_callback:
+                        try:
+                            self._on_exchange_verified_callback(verified_records)
+                        except Exception as e:
+                            logger.error(f"兑换验证通过回调执行失败: {e}", exc_info=True)
 
                 # 2. 获取并保存刷新事件
                 refresh_events = self._verification_service.get_refresh_events()
@@ -117,6 +134,36 @@ class ExchangeMonitorService:
                                 self._on_refresh_logged_callback(refresh_events)
                             except Exception as e:
                                 logger.error(f"刷新记录保存回调执行失败: {e}", exc_info=True)
+
+                        # 自动OCR：检测到花费50神威辉石刷新商店时，自动执行OCR识别
+                        for event in refresh_events:
+                            logger.info(f"[自动OCR] 检测到刷新事件: 消耗神威辉石={event.gem_cost}")
+                            print(f"[自动OCR] 检测到刷新事件: 消耗神威辉石={event.gem_cost}")
+
+                            if event.gem_cost == 50:
+                                # 检查自动OCR是否启用
+                                if not self._config:
+                                    logger.warning("[自动OCR] 配置未初始化")
+                                    print(f"[自动OCR] ❌ 配置未初始化，无法自动识别")
+                                elif not self._config.enable_auto_ocr:
+                                    logger.info("[自动OCR] 自动OCR功能未启用")
+                                    print(f"[自动OCR] ℹ️ 自动OCR功能未启用，请在设置中开启")
+                                elif not self._controller:
+                                    logger.warning("[自动OCR] 控制器未初始化")
+                                    print(f"[自动OCR] ❌ 控制器未初始化")
+                                elif not self._controller._ui:
+                                    logger.warning("[自动OCR] UI未初始化")
+                                    print(f"[自动OCR] ❌ UI未初始化")
+                                else:
+                                    logger.info(f"检测到花费50神威辉石刷新商店，触发自动OCR")
+                                    print(f"[自动OCR] ✓ 检测到刷新商店，开始自动识别...")
+                                    try:
+                                        # 在UI线程中执行OCR
+                                        self._controller._ui.schedule(0, self._controller.on_detect_click)
+                                    except Exception as e:
+                                        logger.error(f"自动OCR执行失败: {e}", exc_info=True)
+                                        print(f"[自动OCR] ❌ 执行失败: {e}")
+                                break  # 只触发一次
 
                 # 3. 清理过期记录
                 cleaned_count = self._verification_service.clean_expired_records()

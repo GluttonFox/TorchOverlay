@@ -29,6 +29,35 @@ class CaptureService(ICaptureService):
     - 可选的临时文件自动清理
     """
 
+    def __init__(self,
+                 enable_optimization: bool = False,
+                 auto_cleanup_temp: bool = True,
+                 optimize_format: str = 'PNG',
+                 optimize_quality: int = 85,
+                 max_temp_files: int = 10):
+        """初始化截图服务
+
+        Args:
+            enable_optimization: 是否启用图片优化
+            auto_cleanup_temp: 是否自动清理临时文件
+            optimize_format: 优化格式 ('PNG' 或 'JPEG')
+            optimize_quality: 优化质量 (0-100)
+            max_temp_files: 最大临时文件数量
+        """
+        # 初始化统计信息
+        self._stats = {
+            'total_captures': 0,
+            'optimized_captures': 0,
+            'cleanup_count': 0
+        }
+
+        # 优化配置
+        self._enable_optimization = enable_optimization
+        self._auto_cleanup_temp = auto_cleanup_temp
+        self._optimize_format = optimize_format
+        self._optimize_quality = optimize_quality
+        self._max_temp_files = max_temp_files
+
     def capture_window(
         self,
         hwnd: int,
@@ -148,9 +177,6 @@ class CaptureService(ICaptureService):
                 cropped.close()
             if im:
                 im.close()
-
-            # 优化和清理
-            self._post_process_capture(out_path)
 
             # 优化和清理
             self._post_process_capture(out_path)

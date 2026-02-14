@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 class AppFactory:
     """集中装配依赖：后续加截图/云OCR只需在这里注入。"""
 
-    def __init__(self, enable_config_hot_reload: bool = False, enable_config_encryption: bool = False, enable_log_status_check: bool = True) -> None:
+    def __init__(self, enable_config_hot_reload: bool = False, enable_config_encryption: bool = False) -> None:
         # 使用ConfigManager加载配置（如果需要热更新或加密）
         if enable_config_hot_reload or enable_config_encryption:
             self._config_manager = ConfigManager(
@@ -41,8 +41,6 @@ class AppFactory:
         else:
             self._config_manager = None
             self._cfg = AppConfig.load()
-
-        self._enable_log_status_check = enable_log_status_check
 
         self._debug_print("[AppFactory] 配置已加载:")
         self._debug_print(f"  API Key: {self._cfg.ocr.api_key[:10] if self._cfg.ocr.api_key else '空'}...")
@@ -117,6 +115,9 @@ class AppFactory:
 
         # 将控制器引用传递给 UIUpdateService（用于记录兑换日志）
         ui_update_service._controller = controller
+
+        # 将控制器引用传递给 ExchangeMonitorService（用于自动OCR功能）
+        exchange_monitor._controller = controller
 
         # 设置游戏日志监控回调
         game_log_watcher.set_callbacks(
@@ -215,7 +216,8 @@ class AppFactory:
             verification_service=verification_service,
             exchange_log_service=exchange_log_service,
             refresh_log_service=refresh_log_service,
-            check_interval=5.0
+            check_interval=5.0,
+            config=self._cfg
         )
 
     def create_event_bus(self) -> EventBus:

@@ -12,6 +12,7 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass
 
 from core.logger import get_logger
+from core.event_bus import get_event_bus, Events
 from domain.models.buy_event import BuyEvent
 from domain.models.refresh_event import RefreshEvent
 from domain.models.item_update import ItemChange, UpdateItemInfo, AddItemInfo, DeleteItemInfo
@@ -59,7 +60,7 @@ class GameLogParserService:
     REFRESH_SUCCESS_PATTERN = re.compile(r"Func_Vendor_refreshSuccess")
     
     # 背包初始化进度
-    LOAD_PROGRESS_PATTERN = re.compile(r"LoadUILogicProgress=(\d+)")
+    LOAD_PROGRESS_PATTERN = re.compile(r"LoadUILogicProgress\s*=\s*(\d+)")
     
     # 玩家信息模式
     PLAYER_INFO_START_PATTERN = re.compile(r"^\+player\+")
@@ -91,6 +92,9 @@ class GameLogParserService:
         self._last_position = 0  # 上次读取位置
         self._last_size = 0  # 上次文件大小
         self._initialized = False  # 服务是否已初始化
+
+        # 事件总线
+        self._event_bus = get_event_bus()
 
         # 背包状态管理器
         self._inventory_manager = InventoryStateManager()
@@ -134,7 +138,7 @@ class GameLogParserService:
                     self._inventory_manager.reset_backpack_initialized()
                 self._last_size = current_size
 
-                # 首次启动，跳到文件末尾
+                # 首次启动，跳到日志文件末尾，只监控新日志
                 if not self._initialized:
                     logger.info("首次启动，跳到日志文件末尾，只监控新日志")
                     self._last_position = current_size
@@ -146,11 +150,18 @@ class GameLogParserService:
 
                 buy_events = []
                 refresh_events = []
-                
+
+                line_count = 0
                 for line in f:
+                    line_count += 1
                     # 更新读取位置（通过行长度）
                     self._last_position += len(line.encode('utf-8'))
-                    
+
+                    # 调试：打印新读取的日志行
+                    if 'LoadUILogicProgress' in line:
+                        print(f"[日志解析] 发现 LoadUILogicProgress 行: {line.strip()}")
+                        logger.info(f"发现 LoadUILogicProgress 行: {line.strip()}")
+
                     parsed = self._parse_log_line(line)
                     if not parsed:
                         continue
@@ -166,6 +177,11 @@ class GameLogParserService:
                 if self._current_event:
                     logger.warning(f"文件结束，强制关闭未完成事件: {self._current_event.event_type}")
                     self._finalize_event(buy_events, refresh_events)
+
+                # 调试：输出本次读取的行数
+                if line_count > 0:
+                    print(f"[日志解析] 本次读取了 {line_count} 行新日志")
+                    logger.info(f"本次读取了 {line_count} 行新日志")
 
                 return buy_events, refresh_events
 
@@ -184,14 +200,16 @@ class GameLogParserService:
             refresh_events: 刷新事件列表（输出参数）
         """
         content = log_line.content
-        
+
         # 0. 检查连接关闭
         if self.CONNECTION_CLOSED_PATTERN.search(content):
-            # logger.debug("检测到断开连接事件，重置玩家状态")
+            logger.info("检测到断开连接事件，重置玩家状态")
             self._player_name = None
             self._player_season_id = None
             self._inventory_manager.reset_backpack_initialized()
-        
+            # 发布断线事件
+            self._event_bus.publish(Events.CONNECTION_CLOSED)
+
         # 1. 识别玩家信息
         self._parse_player_info(log_line)
         
@@ -226,16 +244,16 @@ class GameLogParserService:
 
     def _check_load_progress(self, log_line: LogLine) -> None:
         """检查背包初始化进度
-        
+
         Args:
             log_line: 日志行
         """
         progress_match = self.LOAD_PROGRESS_PATTERN.search(log_line.content)
         if progress_match:
             progress = int(progress_match.group(1))
-            # logger.debug(f"加载进度: {progress}")
             print(f"[日志解析] 加载进度: {progress}")
-            
+            logger.info(f"加载进度: {progress}")
+
             if progress == 2:
                 # 开始加载背包物品
                 logger.info("开始加载背包物品")
@@ -245,6 +263,7 @@ class GameLogParserService:
                 if not self._inventory_manager.is_backpack_initialized:
                     self._inventory_manager.mark_backpack_initialized()
                     logger.info("背包初始化完成")
+                    print(f"[日志解析] 背包初始化完成")
                     
                     # 输出背包物品列表
                     items = self._inventory_manager.get_all_items()
@@ -532,8 +551,23 @@ class GameLogParserService:
             else:
                 logger.info("  没有检测到物品变化，跳过购买事件")
 
-        elif event_type == 'RefreshVendorShop' and event.success:
-            self._process_refresh_event(event, refresh_events)
+        elif event_type == 'RefreshVendorShop':
+            # 只有神威辉石消耗正好是50时才处理
+            has_gem_cost_50 = False
+            gem_cost = 0
+            for update in event.item_updates:
+                if update.base_id == GEM_BASE_ID:
+                    original_quantity = event.instance_snapshot.get(update.item_id, 0)
+                    gem_cost = abs(update.bag_num - original_quantity)
+                    if gem_cost == 50:
+                        has_gem_cost_50 = True
+                        logger.info(f"  检测到神威辉石消耗: {gem_cost}")
+                        break
+
+            if has_gem_cost_50:
+                self._process_refresh_event(event, refresh_events)
+            else:
+                logger.info(f"  刷新事件神威辉石消耗不是50（实际: {gem_cost}），跳过处理")
 
         logger.info(f"========== 事件结束 ==========")
 

@@ -91,6 +91,9 @@ class AppController:
         self._exchange_monitor = exchange_monitor
         self._ui = None
 
+        # 订阅断线事件
+        self._event_bus.subscribe(Events.CONNECTION_CLOSED, self._on_connection_closed)
+
     def attach_ui(self, ui) -> None:
         """附加UI到控制器
 
@@ -114,10 +117,6 @@ class AppController:
 
     def on_window_shown(self) -> None:
         """窗口显示后的初始化"""
-        # 检查日志状态（使用延迟执行，避免阻塞）
-        if self._ui:
-            self._ui.schedule(500, self._check_log_status)
-
         self._ensure_bound_or_exit()
         self._schedule_watch()
 
@@ -143,8 +142,12 @@ class AppController:
 
         根据绑定的游戏进程路径动态设置游戏日志路径
         """
+        print(f"[调试] _initialize_game_log_watcher 被调用")
+        print(f"[调试] _game_log_watcher 是否存在: {self._game_log_watcher is not None}")
+
         if not self._game_log_watcher:
             logger.info("游戏日志监控服务未初始化")
+            print(f"[调试] 游戏日志监控服务未初始化，返回")
             return
 
         try:
@@ -210,8 +213,19 @@ class AppController:
             # 设置游戏日志路径
             self._game_log_watcher._parser.game_log_path = game_log_path
 
+            # 设置回调函数（包括背包初始化回调）
+            # 注意：需要传递购买和刷新事件回调到验证服务
+            self._game_log_watcher.set_callbacks(
+                on_buy_event=self._verification_service.add_buy_event,
+                on_refresh_event=self._verification_service.add_refresh_event,
+                on_backpack_init=self._on_backpack_init_changed
+            )
+
             # 启动监控
             self._game_log_watcher.start()
+
+            # 启动后立即检查背包初始化状态
+            self._ui.schedule(500, self._check_backpack_init_status)
 
             print("✓ 游戏日志监控已启动")
             logger.info("游戏日志监控已启动")
@@ -220,14 +234,87 @@ class AppController:
             print(f"✗ 初始化游戏日志监控失败: {e}")
             logger.error(f"初始化游戏日志监控失败: {e}", exc_info=True)
 
-    def _check_log_status(self) -> None:
-        """检查日志状态并更新UI显示"""
-        # 暂时显示默认状态
-        if self._ui:
-            self._ui.update_log_status("日志状态：点击查看详情", "#666666")
+    def _on_backpack_init_changed(self, is_initialized: bool) -> None:
+        """背包初始化状态变化回调
 
-        # 不在启动时自动检测，避免阻塞
-        # 用户可以通过点击日志状态标签手动查看详情
+        Args:
+            is_initialized: 背包是否已初始化
+        """
+        logger.info(f"背包初始化状态变化: is_initialized={is_initialized}")
+        print(f"[调试] 背包初始化状态变化回调: is_initialized={is_initialized}")
+
+        # 更新UI警告显示
+        if self._ui:
+            # 如果背包已初始化，隐藏警告；否则显示警告
+            show_warning = not is_initialized
+            self._ui.show_backpack_warning(show=show_warning)
+            print(f"[调试] 状态变化回调显示警告: {show_warning}")
+
+    def _check_backpack_init_status(self) -> None:
+        """检查背包初始化状态并更新UI
+
+        在日志监控启动后立即调用，用于显示初始状态
+        """
+        print(f"[调试] _check_backpack_init_status 被调用")
+
+        try:
+            if not self._game_log_watcher:
+                logger.warning("游戏日志监控服务未初始化，无法检查背包状态")
+                print(f"[调试] 游戏日志监控服务未初始化，无法检查背包状态")
+                return
+
+            # 获取当前背包初始化状态
+            is_initialized = self._game_log_watcher._parser._inventory_manager.is_backpack_initialized
+
+            logger.info(f"当前背包初始化状态: {is_initialized}")
+            print(f"[调试] 当前背包初始化状态: {is_initialized}")
+
+            # 更新UI警告显示
+            if self._ui:
+                print(f"[调试] UI 存在，准备更新警告显示")
+                # 如果背包已初始化，隐藏警告；否则显示警告
+                show_warning = not is_initialized
+                self._ui.show_backpack_warning(show=show_warning)
+                print(f"[调试] 显示警告: {show_warning}")
+            else:
+                print(f"[调试] UI 不存在，无法更新警告显示")
+
+            # 延迟检查一次，确保状态已经更新
+            # 因为首次启动时，日志监控会跳到文件末尾，可能还没检测到初始化事件
+            if self._ui:
+                print(f"[调试] 调度延迟检查：1秒后执行")
+                self._ui.schedule(1000, self._delayed_check_backpack_status)
+            else:
+                print(f"[调试] UI 不存在，无法调度延迟检查")
+
+        except Exception as e:
+            logger.error(f"检查背包初始化状态失败: {e}", exc_info=True)
+            print(f"[错误] 检查背包初始化状态失败: {e}")
+
+    def _delayed_check_backpack_status(self) -> None:
+        """延迟检查背包初始化状态
+
+        首次启动后1秒再次检查，确保状态正确
+        """
+        try:
+            if not self._game_log_watcher:
+                return
+
+            # 获取当前背包初始化状态
+            is_initialized = self._game_log_watcher._parser._inventory_manager.is_backpack_initialized
+
+            logger.info(f"延迟检查背包初始化状态: {is_initialized}")
+            print(f"[调试] 延迟检查背包初始化状态: {is_initialized}")
+
+            # 更新UI警告显示
+            if self._ui:
+                show_warning = not is_initialized
+                self._ui.show_backpack_warning(show=show_warning)
+                print(f"[调试] 延迟检查显示警告: {show_warning}")
+
+        except Exception as e:
+            logger.error(f"延迟检查背包初始化状态失败: {e}", exc_info=True)
+            print(f"[错误] 延迟检查背包初始化状态失败: {e}")
 
     def _schedule_watch(self) -> None:
         """安排窗口监视任务"""
@@ -438,7 +525,7 @@ class AppController:
         else:
             self._debug_log("[Overlay] 没有文本项可显示")
 
-    def update_config(self, ocr_config, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min") -> bool:
+    def update_config(self, ocr_config, watch_interval_ms: int, enable_tax_calculation: bool = False, mystery_gem_mode: str = "min", enable_exchange_log: bool = True, enable_auto_ocr: bool = False) -> bool:
         """更新配置
 
         Args:
@@ -446,6 +533,8 @@ class AppController:
             watch_interval_ms: 新的监视间隔
             enable_tax_calculation: 是否开启税率计算
             mystery_gem_mode: 奥秘辉石处理模式
+            enable_exchange_log: 是否开启兑换日志
+            enable_auto_ocr: 是否开启自动OCR
 
         Returns:
             是否更新成功
@@ -464,6 +553,8 @@ class AppController:
                 last_price_update=self._cfg.last_price_update,
                 enable_tax_calculation=enable_tax_calculation,
                 mystery_gem_mode=mystery_gem_mode,
+                enable_exchange_log=enable_exchange_log,
+                enable_auto_ocr=enable_auto_ocr,
             )
 
             # 保存配置文件
@@ -490,6 +581,8 @@ class AppController:
                 'debug_mode': ocr_config.debug_mode,
                 'mystery_gem_mode': mystery_gem_mode,
                 'enable_tax_calculation': enable_tax_calculation,
+                'enable_exchange_log': enable_exchange_log,
+                'enable_auto_ocr': enable_auto_ocr,
             })
 
             # 更新UI更新服务的配置
@@ -551,3 +644,25 @@ class AppController:
             logger.info(f"添加兑换记录: {item_name} x{quantity}, 盈亏={profit:.4f}")
         except Exception as e:
             logger.error(f"添加兑换记录失败: {e}")
+
+    def _on_connection_closed(self) -> None:
+        """处理断线事件
+
+        当检测到网络断开时：
+        1. 重置背包状态
+        2. 显示背包未初始化警告
+        3. 记录日志
+        """
+        logger.info("收到断线事件，重置玩家状态")
+        print(f"[断线事件] 检测到网络断开，重置状态")
+
+        try:
+            # 显示背包未初始化警告（因为断线后背包状态失效）
+            if self._ui:
+                self._ui.show_backpack_warning(show=True)
+                logger.info("已显示背包未初始化警告")
+                print(f"[断线事件] 已显示背包未初始化警告")
+
+        except Exception as e:
+            logger.error(f"处理断线事件失败: {e}", exc_info=True)
+            print(f"[错误] 处理断线事件失败: {e}")

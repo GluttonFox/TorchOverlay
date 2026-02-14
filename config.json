@@ -1,0 +1,23 @@
+{
+    "app_title_prefix": "Torch",
+    "keywords": [
+        "火炬之光无限",
+        "火炬之光",
+        "Torchlight"
+    ],
+    "watch_interval_ms": 500,
+    "elevated_marker": "--elevated",
+    "ocr": {
+        "api_key": "ZWkIofSWD0NLUaVOv9haUv6v",
+        "secret_key": "0QXmsJTj5egvRPnIn78DKPh0JehRiN2B",
+        "api_name": "accurate",
+        "timeout_sec": 15.0,
+        "max_retries": 2,
+        "debug_mode": false
+    },
+    "last_price_update": "2026-02-13T18:25:00.519937",
+    "enable_tax_calculation": true,
+    "mystery_gem_mode": "min",
+    "enable_exchange_log": true,
+    "enable_auto_ocr": true
+}

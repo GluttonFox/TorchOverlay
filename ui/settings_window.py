@@ -12,13 +12,18 @@ class SettingsWindow:
 
         self.window = tk.Toplevel(parent)
         self.window.title("设置")
-        self.window.geometry("650x600")
+        self.window.geometry("500x520")
         self.window.resizable(False, False)
         self.window.grab_set()  # 模态窗口
 
         # 保存原始的完整key
         self._original_api_key = cfg.ocr.api_key
         self._original_secret_key = cfg.ocr.secret_key
+
+        # API类型映射：中文显示值 -> 实际API名称
+        self._api_name_mapping = {
+            '百度-高精度带坐标': 'accurate',
+        }
 
         self._setup_ui()
         self._load_config()
@@ -30,99 +35,130 @@ class SettingsWindow:
         self.window.geometry(f"+{x}+{y}")
 
     def _setup_ui(self):
-        # API类型映射：中文显示值 -> 实际API名称
-        self._api_name_mapping = {
-            '百度-高精度带坐标': 'accurate',
-        }
+        # 创建选项卡容器
+        self.notebook = ttk.Notebook(self.window)
+        self.notebook.place(x=10, y=10, width=480, height=420)
 
-        # OCR设置分组
-        ocr_frame = ttk.LabelFrame(self.window, text="OCR 设置", padding=10)
-        ocr_frame.place(x=20, y=20, width=610, height=240)
+        # 创建各个选项卡
+        self._create_ocr_tab()
+        self._create_app_tab()
+        self._create_advanced_tab()
+
+        # 按钮区域
+        button_frame = ttk.Frame(self.window)
+        button_frame.place(x=10, y=440, width=480, height=40)
+
+        ttk.Button(button_frame, text="保存", command=self._save_settings, width=12).place(x=280, y=8)
+        ttk.Button(button_frame, text="取消", command=self.window.destroy, width=12).place(x=370, y=8)
+
+    def _create_ocr_tab(self):
+        """创建OCR设置选项卡"""
+        ocr_frame = ttk.Frame(self.notebook, padding=15)
+        self.notebook.add(ocr_frame, text="OCR 设置")
 
         # API Key
-        ttk.Label(ocr_frame, text="API Key:").place(x=10, y=10)
+        ttk.Label(ocr_frame, text="API Key:").grid(row=0, column=0, sticky="w", pady=8)
         self.api_key_var = tk.StringVar()
-        ttk.Entry(ocr_frame, textvariable=self.api_key_var, width=60).place(x=80, y=10)
+        ttk.Entry(ocr_frame, textvariable=self.api_key_var, width=45).grid(row=0, column=1, sticky="w", pady=8)
 
         # Secret Key
-        ttk.Label(ocr_frame, text="Secret Key:").place(x=10, y=40)
+        ttk.Label(ocr_frame, text="Secret Key:").grid(row=1, column=0, sticky="w", pady=8)
         self.secret_key_var = tk.StringVar()
-        ttk.Entry(ocr_frame, textvariable=self.secret_key_var, width=60).place(x=80, y=40)
+        ttk.Entry(ocr_frame, textvariable=self.secret_key_var, width=45).grid(row=1, column=1, sticky="w", pady=8)
 
         # API Name
-        ttk.Label(ocr_frame, text="API 类型:").place(x=10, y=70)
+        ttk.Label(ocr_frame, text="API 类型:").grid(row=2, column=0, sticky="w", pady=8)
         self.api_name_var = tk.StringVar()
-        api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=40, state="readonly")
+        api_name_combo = ttk.Combobox(ocr_frame, textvariable=self.api_name_var, width=30, state="readonly")
         api_name_combo['values'] = tuple(self._api_name_mapping.keys())
-        api_name_combo.place(x=80, y=70)
+        api_name_combo.grid(row=2, column=1, sticky="w", pady=8)
 
         # 超时时间
-        ttk.Label(ocr_frame, text="超时时间(秒):").place(x=10, y=100)
+        ttk.Label(ocr_frame, text="超时时间(秒):").grid(row=3, column=0, sticky="w", pady=8)
         self.timeout_var = tk.DoubleVar()
-        ttk.Spinbox(ocr_frame, from_=5, to=60, textvariable=self.timeout_var, width=10).place(x=80, y=100)
+        ttk.Spinbox(ocr_frame, from_=5, to=60, textvariable=self.timeout_var, width=10).grid(row=3, column=1, sticky="w", pady=8)
 
         # 重试次数
-        ttk.Label(ocr_frame, text="重试次数:").place(x=10, y=130)
+        ttk.Label(ocr_frame, text="重试次数:").grid(row=4, column=0, sticky="w", pady=8)
         self.retries_var = tk.IntVar()
-        ttk.Spinbox(ocr_frame, from_=0, to=5, textvariable=self.retries_var, width=10).place(x=80, y=130)
+        ttk.Spinbox(ocr_frame, from_=0, to=5, textvariable=self.retries_var, width=10).grid(row=4, column=1, sticky="w", pady=8)
 
         # 调试模式
         self.debug_var = tk.BooleanVar()
-        ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).place(x=10, y=160)
+        ttk.Checkbutton(ocr_frame, text="启用调试模式", variable=self.debug_var).grid(row=5, column=0, columnspan=2, sticky="w", pady=8)
 
         # 说明
         info_text = "说明: 使用「百度-高精度带坐标」获得最佳识别效果"
+        info_label = ttk.Label(ocr_frame, text=info_text, foreground="gray", justify="left")
+        info_label.grid(row=6, column=0, columnspan=2, sticky="w", pady=15)
 
-        info_label = ttk.Label(
-            ocr_frame,
-            text=info_text,
-            foreground="gray",
-            justify="left",
-            wraplength=590
-        )
-        info_label.place(x=10, y=190)
-
-        # 应用设置分组
-        app_frame = ttk.LabelFrame(self.window, text="应用设置", padding=10)
-        app_frame.place(x=20, y=270, width=610, height=180)
+    def _create_app_tab(self):
+        """创建应用设置选项卡"""
+        app_frame = ttk.Frame(self.notebook, padding=15)
+        self.notebook.add(app_frame, text="应用设置")
 
         # 监控间隔
-        ttk.Label(app_frame, text="监控间隔(ms):").place(x=10, y=10)
+        ttk.Label(app_frame, text="监控间隔(ms):").grid(row=0, column=0, sticky="w", pady=12)
         self.interval_var = tk.IntVar()
-        ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).place(x=120, y=10)
+        ttk.Spinbox(app_frame, from_=100, to=2000, textvariable=self.interval_var, width=10).grid(row=0, column=1, sticky="w", pady=12)
 
         # 税率计算开关
         self.tax_calc_var = tk.BooleanVar()
-        ttk.Checkbutton(app_frame, text="开启税率计算", variable=self.tax_calc_var).place(x=10, y=40)
+        ttk.Checkbutton(app_frame, text="开启税率计算", variable=self.tax_calc_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=12)
 
         # 奥秘辉石计算模式
-        ttk.Label(app_frame, text="奥秘辉石模式:").place(x=10, y=70)
+        ttk.Label(app_frame, text="奥秘辉石模式:").grid(row=2, column=0, sticky="w", pady=12)
         self.mystery_gem_mode_var = tk.StringVar()
         mystery_gem_combo = ttk.Combobox(app_frame, textvariable=self.mystery_gem_mode_var, width=15, state="readonly")
         mystery_gem_combo['values'] = ('最小', '最大', '随机')
-        mystery_gem_combo.place(x=120, y=70)
+        mystery_gem_combo.grid(row=2, column=1, sticky="w", pady=12)
 
         # 奥秘辉石说明
         gem_info_text = "奥秘辉石价格: 小=50-100神威辉石, 大=100-900神威辉石"
+        gem_info_label = ttk.Label(app_frame, text=gem_info_text, foreground="gray", justify="left")
+        gem_info_label.grid(row=3, column=0, columnspan=2, sticky="w", pady=15)
 
-        gem_info_label = ttk.Label(
-            app_frame,
-            text=gem_info_text,
-            foreground="gray",
-            justify="left"
-        )
-        gem_info_label.place(x=10, y=100)
+        # 应用说明
+        app_info = "说明: 监控间隔建议设置为 300-500ms，过小会增加CPU占用"
+        app_info_label = ttk.Label(app_frame, text=app_info, foreground="gray", justify="left", wraplength=400)
+        app_info_label.grid(row=4, column=0, columnspan=2, sticky="w", pady=10)
 
-        # 按钮
-        button_frame = ttk.Frame(self.window)
-        button_frame.place(x=20, y=460, width=610, height=50)
+    def _create_advanced_tab(self):
+        """创建高级设置选项卡"""
+        advanced_frame = ttk.Frame(self.notebook, padding=15)
+        self.notebook.add(advanced_frame, text="高级设置")
 
-        ttk.Button(button_frame, text="保存", command=self._save_settings, width=15).place(x=320, y=10)
-        ttk.Button(button_frame, text="取消", command=self.window.destroy, width=15).place(x=450, y=10)
+        # 兑换日志开关
+        self.exchange_log_var = tk.BooleanVar()
+        ttk.Checkbutton(advanced_frame, text="启用兑换日志", variable=self.exchange_log_var).grid(row=0, column=0, columnspan=2, sticky="w", pady=12)
+
+        # 兑换日志说明
+        exchange_log_info = "开启后，每次兑换都会记录到 exchange_log.json 文件中。\n可在主界面点击「兑换日志」按钮查看历史记录。"
+        exchange_log_label = ttk.Label(advanced_frame, text=exchange_log_info, foreground="gray", justify="left", wraplength=420)
+        exchange_log_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=10)
+
+        # 分隔线
+        ttk.Separator(advanced_frame, orient="horizontal").grid(row=2, column=0, columnspan=2, sticky="ew", pady=15)
+
+        # 自动OCR开关
+        self.auto_ocr_var = tk.BooleanVar()
+        ttk.Checkbutton(advanced_frame, text="启用自动OCR", variable=self.auto_ocr_var).grid(row=3, column=0, columnspan=2, sticky="w", pady=12)
+
+        # 自动OCR说明
+        auto_ocr_info = "开启后，当检测到花费50神威辉石刷新商店时，会自动执行物品识别。\n无需手动点击「识别」按钮即可查看价格信息。"
+        auto_ocr_label = ttk.Label(advanced_frame, text=auto_ocr_info, foreground="gray", justify="left", wraplength=420)
+        auto_ocr_label.grid(row=4, column=0, columnspan=2, sticky="w", pady=10)
+
+        # 高级说明
+        advanced_info = "高级设置包含系统级配置选项，请谨慎修改。\n\n" \
+                       "• 兑换日志: 控制是否记录兑换操作到日志文件\n" \
+                       "• 自动OCR: 检测到花费50神威辉石刷新商店后自动识别"
+        advanced_info_label = ttk.Label(advanced_frame, text=advanced_info, foreground="gray", justify="left", wraplength=420)
+        advanced_info_label.grid(row=5, column=0, columnspan=2, sticky="w", pady=15)
 
     def _load_config(self):
         """加载当前配置到界面"""
-        # 显示脱敏后的key
+        # OCR设置
         self.api_key_var.set(self._mask_sensitive(self._cfg.ocr.api_key))
         self.secret_key_var.set(self._mask_sensitive(self._cfg.ocr.secret_key))
 
@@ -134,12 +170,18 @@ class SettingsWindow:
         self.timeout_var.set(self._cfg.ocr.timeout_sec)
         self.retries_var.set(self._cfg.ocr.max_retries)
         self.debug_var.set(self._cfg.ocr.debug_mode)
+
+        # 应用设置
         self.interval_var.set(self._cfg.watch_interval_ms)
         self.tax_calc_var.set(self._cfg.enable_tax_calculation)
 
         # 加载奥秘辉石模式
         mode_map = {'min': '最小', 'max': '最大', 'random': '随机'}
         self.mystery_gem_mode_var.set(mode_map.get(self._cfg.mystery_gem_mode, '最小'))
+
+        # 高级设置
+        self.exchange_log_var.set(self._cfg.enable_exchange_log)
+        self.auto_ocr_var.set(self._cfg.enable_auto_ocr)
 
     def _mask_sensitive(self, value: str) -> str:
         """脱敏敏感信息，只显示前4位和最后4位"""
@@ -199,5 +241,6 @@ class SettingsWindow:
         )
 
         # 保存配置
-        if self._save_callback(ocr_config, self.interval_var.get(), self.tax_calc_var.get(), mystery_gem_mode):
+        if self._save_callback(ocr_config, self.interval_var.get(), self.tax_calc_var.get(), mystery_gem_mode, self.exchange_log_var.get(), self.auto_ocr_var.get()):
             self.window.destroy()
+
